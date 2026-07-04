@@ -34,6 +34,44 @@
 #include "../include/pmm.h"
 #include "../include/paging.h"
 
+static int shell_is_interactive_script_command(const char *cmd);
+
+
+static int shell_cmd_starts_with(const char *cmd, const char *prefix) {
+    int i = 0;
+
+    if (!cmd || !prefix) return 0;
+
+    while (prefix[i]) {
+        if (cmd[i] != prefix[i]) {
+            return 0;
+        }
+        i++;
+    }
+
+    return 1;
+}
+
+static int shell_is_interactive_script_command(const char *cmd) {
+    if (!cmd) return 0;
+
+    while (*cmd == ' ') cmd++;
+
+    if (shell_cmd_starts_with(cmd, "screen")) return 1;
+    if (shell_cmd_starts_with(cmd, "chatui")) return 1;
+    if (shell_cmd_starts_with(cmd, "home")) return 1;
+    if (shell_cmd_starts_with(cmd, "los")) return 1;
+    if (shell_cmd_starts_with(cmd, "talk ")) return 1;
+    if (shell_cmd_starts_with(cmd, "ask ")) return 1;
+    if (shell_cmd_starts_with(cmd, "web ")) return 1;
+    if (shell_cmd_starts_with(cmd, "ring home")) return 1;
+    if (shell_cmd_starts_with(cmd, "open ")) return 1;
+    if (shell_cmd_starts_with(cmd, "workspace ")) return 1;
+
+    return 0;
+}
+
+
 #define SHELL_BUFFER_SIZE 512
 
 static char input_buffer[SHELL_BUFFER_SIZE];
@@ -1944,7 +1982,7 @@ static const char *command_lines[] = {
     "Themes: themes theme theme list theme next theme prev theme <name>",
     "Workspaces: workspaces open mkworkspace workspace workstatus wsblocks wsremove wsreplace wsaction wstemplate wstitle wsadd wsbutton wsnode wsend",
     "Scripts: run run -v startup",
-    "AI/Services: ask web ring chat ops intent gentask tasks tasklist taskshow tasklog taskopen taskstatus tasknext taskreopen taskdone ai aistatus services service apps runapp handlers",
+    "AI/Services: talk ask web ring chat ops intent gentask tasks tasklist taskshow tasklog taskopen taskstatus tasknext taskreopen taskdone ai aistatus services service apps runapp handlers",
     "Models/Packages: models modelstatus importmodel loadmodel packages install remove formats load",
     "Kernel/Debug: mem pages paging kmalloc kfree allocpage freepage ps newtask current schedule dmesg kbd panic",
     "Scrollback: scrollup scrolldown top bottom PageUp PageDown",
@@ -3167,6 +3205,11 @@ static void shell_execute(const char *command) {
                 continue;
             }
 
+            if (shell_is_interactive_script_command(line + first)) {
+                skipped++;
+                continue;
+            }
+
             if (verbose) {
                 terminal_writestring("$ ");
                 terminal_writestring(line + first);
@@ -3764,6 +3807,28 @@ static void shell_execute(const char *command) {
 
         if (!ai_bridge_web(query)) {
             shell_error("Web bridge failed");
+        }
+
+        return;
+
+    } else if (
+        command[0] == 't' &&
+        command[1] == 'a' &&
+        command[2] == 'l' &&
+        command[3] == 'k' &&
+        command[4] == ' '
+    ) {
+        char text[256];
+
+        shell_copy_unquoted_rest(command + 5, text, 256);
+
+        if (!text[0]) {
+            shell_error("Usage: talk \"text\"");
+            return;
+        }
+
+        if (!ai_bridge_talk(text)) {
+            shell_error("Talk failed");
         }
 
         return;

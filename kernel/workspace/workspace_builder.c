@@ -947,7 +947,7 @@ int workspace_builder_template(const char *kind, const char *name) {
             "END\n"
 
             "NODE=row|horizontal|1\n"
-            "BLOCK=text|Last Tool Result|No tool result yet.\\nAsk a web question or request a workspace.\n"
+            "BLOCK=text|Last Tool Result|No tool result yet.\\nTalk to LOS. The AI can change screens or use web tools.\n"
             "END\n"
 
             "NODE=row|horizontal|2\n"
@@ -956,12 +956,12 @@ int workspace_builder_template(const char *kind, const char *name) {
             "END\n"
 
             "NODE=row|horizontal|2\n"
-            "BLOCK=button|Dashboard|Build Dashboard|shell:ask \"make me a dashboard\"\n"
-            "BLOCK=button|Coding|Coding Mode|shell:ask \"switch to coding mode\"\n"
+            "BLOCK=button|Dashboard|Build Dashboard|shell:talk \"make me a dashboard\"\n"
+            "BLOCK=button|Coding|Coding Mode|shell:talk \"switch to coding mode\"\n"
             "END\n"
 
             "NODE=row|horizontal|2\n"
-            "BLOCK=button|Weather|Weather Vienna|shell:ask \"weather in Vienna\"\n"
+            "BLOCK=button|Weather|Weather Vienna|shell:talk \"weather in Vienna\"\n"
             "BLOCK=button|Home|Open Home|shell:home\n"
             "END\n"
 
@@ -980,16 +980,16 @@ int workspace_builder_template(const char *kind, const char *name) {
             "NODE=root|vertical|1\n"
 
             "NODE=row|horizontal|1\n"
-            "BLOCK=ai|AI Ring|State machine:\\nidle -> chat -> thinking -> docked\\nUse: screen\\nUse: ask \"what is docker\"\n"
+            "BLOCK=ai|AI Ring|State machine:\\nidle -> chat -> thinking -> docked\\nUse: screen\\nUse: talk \"what is docker\"\n"
             "END\n"
 
             "NODE=row|horizontal|2\n"
-            "BLOCK=text|Command Center|Examples:\\nask \"what is docker\"\\nask \"weather in Vienna\"\\nask \"make dashboard\"\\nchat \"coding mode\"\n"
+            "BLOCK=text|Command Center|Examples:\\ntalk \"what is docker\"\\ntalk \"weather in Vienna\"\\ntalk \"make dashboard\"\\nchat \"coding mode\"\n"
             "BLOCK=status|Workspace Engine|Mutable workspace documents: ready\\nTask files: ready\\nIntent engine: ready\\nHost bridge: ready\n"
             "END\n"
 
             "NODE=row|horizontal|1\n"
-            "BLOCK=text|Web Result|Ask something from the web.\\nExample: ask \"what is docker\"\n"
+            "BLOCK=text|Web Result|Ask something from the web.\\nExample: talk \"what is docker\"\n"
             "END\n"
 
             "NODE=row|horizontal|2\n"

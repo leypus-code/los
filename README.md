@@ -797,3 +797,25 @@ Examples:
     ask "make dashboard"
 
 Bridge results update Chat Screen widgets, while Home remains the generated workspace.
+
+
+## talk command
+
+`talk` is the user-facing AI chat input.
+
+Examples:
+
+    talk "what is docker"
+    talk "weather in Vienna"
+    talk "make me a dashboard"
+    talk "switch to coding mode"
+
+Flow:
+
+    talk
+    ring opens chat
+    Chat Screen shows thinking
+    Host AI Bridge routes the request
+    web/tool/intent executes
+    Chat Screen or Home updates
+    ring docks

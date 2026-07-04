@@ -1,5 +1,16 @@
 # LOS Changelog
 
+## LOS v21.6a
+- Added script safety guard for interactive commands
+- Scripts now skip screen/chatui/home/talk/ask/web/open/workspace commands
+- Prevents startup.los from blocking boot before shell prompt
+
+## LOS v21.6
+- Added talk command as user-facing AI chat input
+- talk opens/updates Chat Screen, sets Ring state, calls Host AI Bridge, then docks Ring
+- Chat Screen and Home templates now suggest talk instead of ask
+- This creates the first full chat-like flow: user input -> AI thinking -> tool/intent -> visible UI update
+
 ## LOS v21.5c
 - Changed Chat Screen result format to compact first-line output
 - Web/AI results are now visible in cramped 80-column text layout

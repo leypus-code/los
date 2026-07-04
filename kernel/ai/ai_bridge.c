@@ -388,3 +388,31 @@ int ai_bridge_web(const char *query) {
     ai_bridge_open_chat_after_result();
     return 1;
 }
+
+int ai_bridge_talk(const char *text) {
+    if (!text || !text[0]) {
+        kprintf("Talk: empty\n");
+        return 0;
+    }
+
+    ring_set_state("chat");
+    ring_log_operation("talk: user input");
+
+    ai_bridge_update_chat_widget(text, "thinking...");
+    if (workspace_builder_open("/workspaces/chat.workspace")) {
+        /* user sees chat screen before result */
+    } else {
+        workspace_builder_open("chat.workspace");
+    }
+
+    ring_set_state("thinking");
+    kprintf("Talk: %s\n", text);
+
+    if (!ai_bridge_execute(text)) {
+        ring_set_state("chat");
+        return 0;
+    }
+
+    ring_set_state("docked");
+    return 1;
+}
