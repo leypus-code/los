@@ -579,3 +579,63 @@ Ollama mode:
     python3 tools/ai_bridge.py --mode ollama --model llama3.2
 
 The bridge calls the local Ollama API and routes the result back to LOS.
+
+
+## Host Web Bridge
+
+LOS can request web information through the host bridge.
+
+Run LOS with serial bridge:
+
+    make run-ai
+
+In another terminal:
+
+    python3 tools/ai_bridge.py --mode mock --web ddg
+
+Inside LOS:
+
+    web "weather in Vienna"
+    web "latest linux kernel"
+    web "what is docker"
+
+The bridge returns a short one-line web result to LOS.
+
+This is host-side internet access. Native kernel networking is a later milestone.
+
+
+## AI tool routing
+
+The `ask` command can route to tools.
+
+Examples:
+
+    ask "make me a dashboard"
+    ask "switch to coding mode"
+    ask "what is docker"
+    ask "weather in Vienna"
+
+The host AI bridge may return:
+
+    build dashboard
+    coding mode
+    web:what is docker
+
+When LOS receives `web:<query>`, it automatically calls the Host Web Bridge.
+
+
+## Useful Host Web answers
+
+The Host Web Bridge can return short useful answers.
+
+Examples:
+
+    ask "what is docker"
+    ask "weather in Vienna"
+    web "what is linux"
+    web "weather in Vienna"
+
+The bridge uses:
+- wttr.in for weather-style queries
+- Wikipedia REST summaries for what-is/who-is queries
+- DuckDuckGo HTML/Lite fallback for general search

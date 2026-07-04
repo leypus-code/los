@@ -1944,7 +1944,7 @@ static const char *command_lines[] = {
     "Themes: themes theme theme list theme next theme prev theme <name>",
     "Workspaces: workspaces open mkworkspace workspace workstatus wsblocks wsremove wsreplace wsaction wstemplate wstitle wsadd wsbutton wsnode wsend",
     "Scripts: run run -v startup",
-    "AI/Services: ask ring chat ops intent gentask tasks tasklist taskshow tasklog taskopen taskstatus tasknext taskreopen taskdone ai aistatus services service apps runapp handlers",
+    "AI/Services: ask web ring chat ops intent gentask tasks tasklist taskshow tasklog taskopen taskstatus tasknext taskreopen taskdone ai aistatus services service apps runapp handlers",
     "Models/Packages: models modelstatus importmodel loadmodel packages install remove formats load",
     "Kernel/Debug: mem pages paging kmalloc kfree allocpage freepage ps newtask current schedule dmesg kbd panic",
     "Scrollback: scrollup scrolldown top bottom PageUp PageDown",
@@ -3727,6 +3727,27 @@ static void shell_execute(const char *command) {
 
         if (!ring_handle_command(text)) {
             shell_error("Ring command failed");
+        }
+
+        return;
+
+    } else if (
+        command[0] == 'w' &&
+        command[1] == 'e' &&
+        command[2] == 'b' &&
+        command[3] == ' '
+    ) {
+        char query[256];
+
+        shell_copy_unquoted_rest(command + 4, query, 256);
+
+        if (!query[0]) {
+            shell_error("Usage: web \"query\"");
+            return;
+        }
+
+        if (!ai_bridge_web(query)) {
+            shell_error("Web bridge failed");
         }
 
         return;

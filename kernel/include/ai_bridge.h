@@ -3,5 +3,6 @@
 
 int ai_bridge_ask(const char *prompt, char *out, int max);
 int ai_bridge_execute(const char *prompt);
+int ai_bridge_web(const char *query);
 
 #endif

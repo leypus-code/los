@@ -1,5 +1,35 @@
 # LOS Changelog
 
+## LOS v21.3b
+- Added ASCII-safe sanitizing for Host Bridge responses
+- Fixed weather output showing broken UTF-8/emoji in VGA text mode
+- Weather answers now return kernel-safe text such as +27C instead of UTF-8 degree/emoji symbols
+
+## LOS v21.3
+- Improved Host Web Bridge answers
+- Added weather query handling through wttr.in
+- Added what-is/who-is style summaries through Wikipedia REST summary API
+- Improved DuckDuckGo fallback parsing for titles/snippets
+- ask can now route to more useful web answers through web:<query>
+
+## LOS v21.2
+- Added AI tool routing through Host AI Bridge
+- ask can now receive web:<query> responses from the host model/router
+- LOS automatically calls the Web Bridge when AI selects the web tool
+- Updated host bridge mock/Ollama routing to support web:<query>
+
+## LOS v21.1a
+- Increased Host Bridge response timeout
+- Fixed web requests timing out before host-side DuckDuckGo response arrives
+- Added visible waiting messages for AI/Web bridge requests
+
+## LOS v21.1
+- Added Host Web Bridge protocol over serial
+- Added web command in LOS shell
+- Extended tools/ai_bridge.py with LOS_WEB_REQUEST / LOS_WEB_RESPONSE
+- Added mock and DuckDuckGo Lite web modes for host-side internet access
+- This gives LOS external web access through the host bridge without implementing kernel TCP/IP yet
+
 ## LOS v21.0
 - Added COM1 serial driver
 - Added Host AI Bridge protocol over serial
