@@ -1,5 +1,13 @@
 # LOS Changelog
 
+## LOS v21.0
+- Added COM1 serial driver
+- Added Host AI Bridge protocol over serial
+- Added ask command to send prompts to host AI bridge
+- Added run-ai Makefile target using QEMU serial TCP port 7777
+- Added tools/ai_bridge.py with mock and Ollama routing modes
+- This is the first bridge from LOS kernel to a real external AI model runtime
+
 ## LOS v20.32
 - Added AI screen modes for Home workspace
 - Added dashboard mode through chat build dashboard / dashboard

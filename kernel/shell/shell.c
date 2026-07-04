@@ -29,6 +29,7 @@
 #include "../include/service.h"
 #include "../include/intent.h"
 #include "../include/ring.h"
+#include "../include/ai_bridge.h"
 #include "../include/norton.h"
 #include "../include/pmm.h"
 #include "../include/paging.h"
@@ -1943,7 +1944,7 @@ static const char *command_lines[] = {
     "Themes: themes theme theme list theme next theme prev theme <name>",
     "Workspaces: workspaces open mkworkspace workspace workstatus wsblocks wsremove wsreplace wsaction wstemplate wstitle wsadd wsbutton wsnode wsend",
     "Scripts: run run -v startup",
-    "AI/Services: ring chat ops intent gentask tasks tasklist taskshow tasklog taskopen taskstatus tasknext taskreopen taskdone ai aistatus services service apps runapp handlers",
+    "AI/Services: ask ring chat ops intent gentask tasks tasklist taskshow tasklog taskopen taskstatus tasknext taskreopen taskdone ai aistatus services service apps runapp handlers",
     "Models/Packages: models modelstatus importmodel loadmodel packages install remove formats load",
     "Kernel/Debug: mem pages paging kmalloc kfree allocpage freepage ps newtask current schedule dmesg kbd panic",
     "Scrollback: scrollup scrolldown top bottom PageUp PageDown",
@@ -3726,6 +3727,27 @@ static void shell_execute(const char *command) {
 
         if (!ring_handle_command(text)) {
             shell_error("Ring command failed");
+        }
+
+        return;
+
+    } else if (
+        command[0] == 'a' &&
+        command[1] == 's' &&
+        command[2] == 'k' &&
+        command[3] == ' '
+    ) {
+        char text[256];
+
+        shell_copy_unquoted_rest(command + 4, text, 256);
+
+        if (!text[0]) {
+            shell_error("Usage: ask \"text\"");
+            return;
+        }
+
+        if (!ai_bridge_execute(text)) {
+            shell_error("AI bridge failed");
         }
 
         return;

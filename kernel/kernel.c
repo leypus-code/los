@@ -1,5 +1,6 @@
 #include "include/kernel.h"
 #include "include/terminal.h"
+#include "include/serial.h"
 #include "include/gdt.h"
 #include "include/idt.h"
 #include "include/pic.h"
@@ -40,6 +41,7 @@ void kernel_panic(const char *message) {
 
 void kernel_init(void) {
     terminal_initialize();
+    serial_initialize();
     terminal_enable_cursor();
     terminal_update_cursor();
 

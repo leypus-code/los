@@ -682,3 +682,30 @@ Examples:
     chat "reset home"
 
 These commands mutate multiple widgets at once and represent the MVP version of AI reconfiguring the whole screen.
+
+
+## Host AI Bridge
+
+LOS can send prompts to a host-side AI bridge over COM1 serial.
+
+Run LOS with serial AI bridge:
+
+    make run-ai
+
+In another terminal:
+
+    python3 tools/ai_bridge.py --mode mock
+
+Inside LOS:
+
+    ask "make me a dashboard"
+    ask "add weather"
+    ask "switch to coding mode"
+
+The bridge returns one LOS intent, then LOS executes it.
+
+Ollama mode:
+
+    python3 tools/ai_bridge.py --mode ollama --model llama3.2
+
+The bridge calls the local Ollama API and routes the result back to LOS.

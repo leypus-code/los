@@ -30,6 +30,7 @@ OBJS=kernel/boot.o \
      kernel/wm/wm.o \
      kernel/ai/ai.o \
      kernel/ai/ring.o \
+     kernel/ai/ai_bridge.o \
      kernel/model/model.o \
      kernel/service/service.o \
      kernel/intent/intent.o \
@@ -42,6 +43,7 @@ OBJS=kernel/boot.o \
      kernel/memory/paging.o \
      kernel/memory/paging_enable.o \
      kernel/drivers/terminal.o \
+     kernel/drivers/serial.o \
      kernel/drivers/keyboard.o \
      kernel/drivers/timer.o \
      kernel/drivers/rtc.o \
@@ -135,6 +137,9 @@ kernel/ai/ai.o: kernel/ai/ai.c
 kernel/ai/ring.o: kernel/ai/ring.c
 	$(CC) $(CFLAGS) -c kernel/ai/ring.c -o kernel/ai/ring.o
 
+kernel/ai/ai_bridge.o: kernel/ai/ai_bridge.c
+	$(CC) $(CFLAGS) -c kernel/ai/ai_bridge.c -o kernel/ai/ai_bridge.o
+
 kernel/model/model.o: kernel/model/model.c
 	$(CC) $(CFLAGS) -c kernel/model/model.c -o kernel/model/model.o
 
@@ -167,6 +172,9 @@ kernel/memory/paging.o: kernel/memory/paging.c
 
 kernel/memory/paging_enable.o: kernel/memory/paging_enable.S
 	$(CC) $(ASFLAGS) -c kernel/memory/paging_enable.S -o kernel/memory/paging_enable.o
+
+kernel/drivers/serial.o: kernel/drivers/serial.c
+	$(CC) $(CFLAGS) -c kernel/drivers/serial.c -o kernel/drivers/serial.o
 
 kernel/drivers/terminal.o: kernel/drivers/terminal.c
 	$(CC) $(CFLAGS) -c kernel/drivers/terminal.c -o kernel/drivers/terminal.o
@@ -206,6 +214,9 @@ $(ISO): $(KERNEL)
 
 run: $(ISO)
 	qemu-system-i386 -cdrom $(ISO) -no-reboot -no-shutdown
+
+run-ai: $(ISO)
+	qemu-system-i386 -cdrom $(ISO) -no-reboot -no-shutdown -serial tcp:127.0.0.1:7777,server,nowait
 
 clean:
 	rm -rf kernel/*.o kernel/drivers/*.o kernel/cpu/*.o kernel/lib/*.o kernel/shell/*.o kernel/task/*.o kernel/fs/*.o kernel/ui/*.o kernel/app/*.o kernel/ipc/*.o kernel/log/*.o kernel/loader/*.o kernel/package/*.o kernel/editor/*.o kernel/ui_manager/*.o kernel/wm/*.o kernel/ai/*.o kernel/model/*.o kernel/service/*.o kernel/intent/*.o kernel/layout/*.o kernel/uiblock/*.o kernel/workspace/*.o kernel/fileassoc/*.o kernel/memory/*.o $(KERNEL) $(ISO) iso_root/boot
