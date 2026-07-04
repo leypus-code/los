@@ -395,15 +395,17 @@ int ai_bridge_talk(const char *text) {
         return 0;
     }
 
+    /*
+     * Important:
+     * Do not open Chat Screen before bridge/model execution.
+     * workspace_builder_open() is modal and blocks until Q.
+     * So we update the chat workspace first, execute AI/tool routing,
+     * then the web/intent path opens the final screen.
+     */
     ring_set_state("chat");
     ring_log_operation("talk: user input");
 
     ai_bridge_update_chat_widget(text, "thinking...");
-    if (workspace_builder_open("/workspaces/chat.workspace")) {
-        /* user sees chat screen before result */
-    } else {
-        workspace_builder_open("chat.workspace");
-    }
 
     ring_set_state("thinking");
     kprintf("Talk: %s\n", text);
@@ -416,3 +418,4 @@ int ai_bridge_talk(const char *text) {
     ring_set_state("docked");
     return 1;
 }
+

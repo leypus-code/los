@@ -72,6 +72,19 @@ static int shell_is_interactive_script_command(const char *cmd) {
 }
 
 
+
+static int shell_boot_chat_screen_enabled = 1;
+
+static void shell_open_boot_chat_screen(void) {
+    if (!shell_boot_chat_screen_enabled) {
+        return;
+    }
+
+    kprintf("\n[INFO] Opening LOS Chat Screen\n");
+    intent_handle("chat screen");
+}
+
+
 #define SHELL_BUFFER_SIZE 512
 
 static char input_buffer[SHELL_BUFFER_SIZE];
@@ -185,7 +198,7 @@ static void shell_print_history(void) {
 
 
 static const char *completion_commands[] = {
-    "help", "commands", "history", "home", "screen", "chatui", "resetui", "resethome", "resetchat", "clear", "version", "uptime", "time", "date", "clock",
+    "help", "commands", "history", "home", "screen", "chatui", "bootui", "resetui", "resethome", "resetchat", "clear", "version", "uptime", "time", "date", "clock",
     "echo", "pwd", "uname", "whoami", "hostname", "true", "false",
     "ls", "tree", "cd", "cat", "write", "mkdir", "touch", "rm", "rename", "cp", "mv",
     "nano", "edit", "nc", "wm", "currentapp",
@@ -1974,7 +1987,7 @@ static int shell_echo_redirect_inline(const char *command) {
 
 
 static const char *command_lines[] = {
-    "Core: help commands history home screen chatui clear version uptime time date clock",
+    "Core: help commands history home screen chatui bootui clear version uptime time date clock",
     "Linux-like: echo pwd uname uname -a whoami hostname true false",
     "Redirects: echo text > file | echo text >> file",
     "Filesystem: ls tree cd cat write mkdir mkdir-p touch rm rm-r rename cp mv",
@@ -2299,6 +2312,17 @@ static void shell_execute(const char *command) {
         return;
     } else if (strcmp(command, "commands") == 0) {
         pager_open("LOS Commands", command_lines, COMMAND_LINE_COUNT);
+        return;
+    } else if (strcmp(command, "bootui") == 0) {
+        kprintf("Boot UI: %s\n", shell_boot_chat_screen_enabled ? "on" : "off");
+        return;
+    } else if (strcmp(command, "bootui on") == 0) {
+        shell_boot_chat_screen_enabled = 1;
+        shell_ok("Boot UI enabled");
+        return;
+    } else if (strcmp(command, "bootui off") == 0) {
+        shell_boot_chat_screen_enabled = 0;
+        shell_ok("Boot UI disabled");
         return;
     } else if (strcmp(command, "history") == 0) {
         shell_print_history();
@@ -3819,8 +3843,12 @@ static void shell_execute(const char *command) {
         command[4] == ' '
     ) {
         char text[256];
+        char *rest = (char *)(command + 5);
 
-        shell_copy_unquoted_rest(command + 5, text, 256);
+        if (!shell_next_arg(&rest, text, 256)) {
+            shell_error("Usage: talk \"text\"");
+            return;
+        }
 
         if (!text[0]) {
             shell_error("Usage: talk \"text\"");
@@ -4123,6 +4151,7 @@ void shell_initialize(void) {
 
     if (startup && startup->type == VFS_FILE) {
         shell_execute("run /scripts/startup.los");
+        shell_open_boot_chat_screen();
     }
 
     shell_prompt_newline();

@@ -1,5 +1,17 @@
 # LOS Changelog
 
+## LOS v21.7a
+- Fixed talk flow opening Chat Screen before bridge/model execution
+- talk now updates chat workspace with thinking state, executes AI/tool routing, then opens final result screen
+- Fixed talk quoted argument parsing
+- Prevents talk from blocking bridge responses behind modal workspace UI
+
+## LOS v21.7
+- LOS now boots into the user-facing Chat Screen after safe startup tasks
+- Shell remains available as developer/BIOS mode after pressing Q
+- Added bootui, bootui on, and bootui off commands
+- This separates normal user startup from developer shell workflow
+
 ## LOS v21.6a
 - Added script safety guard for interactive commands
 - Scripts now skip screen/chatui/home/talk/ask/web/open/workspace commands

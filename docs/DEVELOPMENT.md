@@ -620,3 +620,25 @@ Flow:
     web/tool/intent executes
     Chat Screen or Home updates
     ring docks
+
+
+## Boot Chat Screen
+
+LOS opens the user-facing Chat Screen automatically after safe startup tasks.
+
+Flow:
+
+    boot
+    startup.los safe tasks
+    LOS Chat Screen
+    Q -> developer shell
+
+Commands:
+
+    bootui
+    bootui on
+    bootui off
+    screen
+    chatui
+
+This keeps shell as developer/BIOS mode while making Chat Screen the default user entry point.
