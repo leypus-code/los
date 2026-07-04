@@ -769,3 +769,16 @@ The bridge uses:
 - wttr.in for weather-style queries
 - Wikipedia REST summaries for what-is/who-is queries
 - DuckDuckGo HTML/Lite fallback for general search
+
+
+## Web Result widget
+
+Web/AI bridge answers can update Home.
+
+Examples:
+
+    ask "what is docker"
+    ask "weather in Vienna"
+    web "what is linux"
+
+LOS receives the bridge response, writes it into the `Web Result` block, and opens Home.

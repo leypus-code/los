@@ -1,5 +1,12 @@
 # LOS Changelog
 
+## LOS v21.4
+- Added Web Result widget behavior for Home workspace
+- Web Bridge responses now update the Home screen
+- ask/web queries can mutate visible workspace state
+- Home template now includes Web Result area
+- This connects AI tool routing to visible UI mutation
+
 ## LOS v21.3b
 - Added ASCII-safe sanitizing for Host Bridge responses
 - Fixed weather output showing broken UTF-8/emoji in VGA text mode

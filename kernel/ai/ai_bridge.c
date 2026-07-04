@@ -4,6 +4,8 @@
 #include "../include/string.h"
 #include "../include/intent.h"
 #include "../include/ring.h"
+#include "../include/workspace_builder.h"
+#include "../include/service.h"
 
 static int ai_bridge_starts_with(const char *s, const char *prefix) {
     int i = 0;
@@ -85,6 +87,100 @@ static int ai_bridge_strip_named_prefix(char *line, const char *prefix, char *ou
 static int ai_bridge_strip_prefix(char *line, char *out, int max) {
     return ai_bridge_strip_named_prefix(line, "LOS_AI_RESPONSE:", out, max);
 }
+
+static void ai_bridge_update_web_widget(const char *query, const char *answer) {
+    char content[512];
+    int pos = 0;
+
+    if (!query) query = "";
+    if (!answer) answer = "";
+
+    const char *q = "Query: ";
+    const char *sep = "\\nResult: ";
+
+    for (int i = 0; q[i] && pos < 511; i++) {
+        content[pos++] = q[i];
+    }
+
+    for (int i = 0; query[i] && pos < 511; i++) {
+        char c = query[i];
+        if (c == '\n' || c == '\r') c = ' ';
+        if (c == '|') c = '/';
+        content[pos++] = c;
+    }
+
+    for (int i = 0; sep[i] && pos < 511; i++) {
+        content[pos++] = sep[i];
+    }
+
+    for (int i = 0; answer[i] && pos < 511; i++) {
+        char c = answer[i];
+        if (c == '\n' || c == '\r') c = ' ';
+        if (c == '|') c = '/';
+        content[pos++] = c;
+    }
+
+    content[pos] = '\0';
+
+    service_call("workspace", "template", "home /workspaces/home.workspace");
+
+    if (workspace_builder_replace_block(
+            "/workspaces/home.workspace",
+            "Web Result",
+            "text",
+            "Web Result",
+            content
+        )) {
+        return;
+    }
+
+    if (workspace_builder_replace_block(
+            "/workspaces/home.workspace",
+            "Command Center",
+            "text",
+            "Web Result",
+            content
+        )) {
+        return;
+    }
+
+    if (workspace_builder_replace_block(
+            "/workspaces/home.workspace",
+            "Weather",
+            "text",
+            "Web Result",
+            content
+        )) {
+        return;
+    }
+
+    if (workspace_builder_replace_block(
+            "/workspaces/home.workspace",
+            "Code Workspace",
+            "text",
+            "Web Result",
+            content
+        )) {
+        return;
+    }
+
+    workspace_builder_replace_block(
+        "/workspaces/home.workspace",
+        "Blank Canvas",
+        "text",
+        "Web Result",
+        content
+    );
+}
+
+static void ai_bridge_open_home_after_web(void) {
+    if (workspace_builder_open("/workspaces/home.workspace")) {
+        return;
+    }
+
+    workspace_builder_open("home.workspace");
+}
+
 
 int ai_bridge_ask(const char *prompt, char *out, int max) {
     char line[384];
@@ -174,5 +270,7 @@ int ai_bridge_web(const char *query) {
 
     kprintf("Web: %s\n", answer);
     ring_log_operation("web: response received");
+    ai_bridge_update_web_widget(query, answer);
+    ai_bridge_open_home_after_web();
     return 1;
 }

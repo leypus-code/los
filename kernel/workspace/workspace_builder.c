@@ -940,7 +940,7 @@ int workspace_builder_template(const char *kind, const char *name) {
 
             "NODE=row|horizontal|3\n"
             "BLOCK=ai|AI Ring|State machine:\\nidle -> chat -> thinking -> docked\\nUse: ring status\\nUse: chat \"debug build error\"\n"
-            "BLOCK=text|Command Center|Examples:\\nchat \"build dashboard\"\\nchat \"coding mode\"\\nchat \"blank canvas\"\\nchat \"reset home\"\n"
+            "BLOCK=text|Command Center|Examples:\\nask \"what is docker\"\\nask \"weather in Vienna\"\\nask \"make dashboard\"\\nchat \"coding mode\"\n"
             "BLOCK=status|Workspace Engine|Mutable workspace documents: ready\\nTask files: ready\\nIntent engine: ready\n"
             "END\n"
 
@@ -953,7 +953,7 @@ int workspace_builder_template(const char *kind, const char *name) {
             "NODE=row|horizontal|3\n"
             "BLOCK=list|Live Tasks|Use tasklist\\ntaskopen debug-build\\ntaskdone debug-build\n"
             "BLOCK=button|Project Plan|Create Project Plan|shell:chat \"plan project\"\n"
-            "BLOCK=logs|AI Operations|No AI operations yet\n"
+            "BLOCK=text|Web Result|Ask something from the web.\\nExample: ask \"what is docker\"\n""BLOCK=logs|AI Operations|No AI operations yet\n"
             "END\n"
 
             "END\n"
