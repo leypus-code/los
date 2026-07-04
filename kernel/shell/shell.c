@@ -787,6 +787,7 @@ static const char *help_lines[] = {
     "  ring                  Show AI ring state",
     "  ring <state>          Set AI ring state",
     "  chat \"text\"         AI ring chat command",
+    "  chat \"add weather\"  Mutate Home workspace",
     "  intent \"text\"       Run rule-based intent",
     "  gentask <kind>        Generate task workspace",
     "  tasks                 List generated task files",

@@ -937,21 +937,25 @@ int workspace_builder_template(const char *kind, const char *name) {
             "WORKSPACE\n"
             "TITLE=LOS AI Home\n"
             "NODE=root|vertical|1\n"
+
             "NODE=row|horizontal|3\n"
-            "BLOCK=ai|AI Ring|State machine:\nidle -> chat -> thinking -> docked\nUse: ring status\nUse: chat \"debug build error\"\n"
-            "BLOCK=text|Command Center|Examples:\nchat \"debug build error\"\nchat \"system overview\"\nchat \"write notes\"\n"
-            "BLOCK=status|Workspace Engine|Mutable workspace documents: ready\nTask files: ready\nIntent engine: ready\n"
+            "BLOCK=ai|AI Ring|State machine:\\nidle -> chat -> thinking -> docked\\nUse: ring status\\nUse: chat \"debug build error\"\n"
+            "BLOCK=text|Command Center|Examples:\\nchat \"debug build error\"\\nchat \"add weather\"\\nchat \"add checklist\"\\nchat \"add logs panel\"\n"
+            "BLOCK=status|Workspace Engine|Mutable workspace documents: ready\\nTask files: ready\\nIntent engine: ready\n"
             "END\n"
+
             "NODE=row|horizontal|3\n"
-            "BLOCK=button|Create|Debug Workspace|shell:intent \"debug build error\"\n"
-            "BLOCK=button|Create|System Overview|shell:intent \"system overview\"\n"
-            "BLOCK=button|Create|Notes Workspace|shell:intent \"write notes\"\n"
+            "BLOCK=button|Debug Workspace|Create Debug Workspace|shell:chat \"debug build error\"\n"
+            "BLOCK=button|System Overview|Create System Overview|shell:chat \"system overview\"\n"
+            "BLOCK=button|Notes Workspace|Create Notes Workspace|shell:chat \"write notes\"\n"
             "END\n"
-            "NODE=row|horizontal|2\n"
-            "BLOCK=list|Live Tasks|Use tasklist\ntaskopen debug-build\ntaskdone debug-build\n"
-            "BLOCK=button|Create|Project Plan|shell:intent \"plan project\"\n"
-            "BLOCK=button|Tools|Task List|shell:tasklist\n"
+
+            "NODE=row|horizontal|3\n"
+            "BLOCK=list|Live Tasks|Use tasklist\\ntaskopen debug-build\\ntaskdone debug-build\n"
+            "BLOCK=button|Project Plan|Create Project Plan|shell:chat \"plan project\"\n"
+            "BLOCK=button|Task List|Show Task List|shell:tasklist\n"
             "END\n"
+
             "END\n"
         );
 

@@ -1,5 +1,18 @@
 # LOS Changelog
 
+## LOS v20.29a
+- Fixed Home workspace template block escaping
+- Fixed multiline widget content to use escaped workspace newlines
+- Home mutation now opens through workspace service fallback
+
+## LOS v20.29
+- Added rule-based AI workspace mutation intents
+- chat add weather mutates Home Command Center into Weather widget
+- chat add checklist mutates Live Tasks into Checklist widget
+- chat add logs panel mutates Workspace Engine into Logs panel
+- Added restore/remove phrases for mutated Home widgets
+- This is the first MVP of AI changing the visible workspace document
+
 ## LOS v20.28a
 - Added ring module object to Makefile
 - Added compile rule for kernel/ai/ring.c

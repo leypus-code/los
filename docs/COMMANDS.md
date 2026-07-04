@@ -485,3 +485,21 @@ The chat command simulates the final UX flow:
     intent runs
     workspace is generated
     ring docks
+
+
+## AI workspace mutation
+
+LOS can mutate the Home workspace through chat-style commands.
+
+Examples:
+
+    chat "add weather"
+    chat "remove weather"
+
+    chat "add checklist"
+    chat "remove checklist"
+
+    chat "add logs panel"
+    chat "remove logs panel"
+
+This is the first MVP step toward AI changing the screen while the user works.

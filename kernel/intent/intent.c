@@ -1,5 +1,6 @@
 #include "../include/intent.h"
 #include "../include/service.h"
+#include "../include/workspace_builder.h"
 #include "../include/kprintf.h"
 #include "../include/string.h"
 #include "../include/eventlog.h"
@@ -169,10 +170,203 @@ static int intent_workspace_kind(const char *text, const char *kind, const char 
     return 0;
 }
 
+
+static int intent_open_home_after_mutation(void) {
+    if (service_call("workspace", "open", "/workspaces/home.workspace")) {
+        return 1;
+    }
+
+    return service_call("workspace", "open", "home.workspace");
+}
+
+static int intent_ensure_home_workspace(void) {
+    service_call("workspace", "template", "home /workspaces/home.workspace");
+    return 1;
+}
+
+static int intent_home_weather(void) {
+    intent_ensure_home_workspace();
+
+    workspace_builder_replace_block(
+        "/workspaces/home.workspace",
+        "Command Center",
+        "status",
+        "Weather",
+        "Weather widget placeholder\\nLocation: auto\\nTemperature: pending\\nCondition: pending"
+    );
+
+    workspace_builder_replace_block(
+        "/workspaces/home.workspace",
+        "Weather",
+        "status",
+        "Weather",
+        "Weather widget placeholder\\nLocation: auto\\nTemperature: pending\\nCondition: pending"
+    );
+
+    eventlog_add("ai mutated home: weather widget");
+    return intent_open_home_after_mutation();
+}
+
+static int intent_home_command_center(void) {
+    intent_ensure_home_workspace();
+
+    workspace_builder_replace_block(
+        "/workspaces/home.workspace",
+        "Weather",
+        "text",
+        "Command Center",
+        "Examples:\\nchat \"debug build error\"\\nchat \"system overview\"\\nchat \"write notes\""
+    );
+
+    eventlog_add("ai mutated home: command center restored");
+    return intent_open_home_after_mutation();
+}
+
+static int intent_home_checklist(void) {
+    intent_ensure_home_workspace();
+
+    workspace_builder_replace_block(
+        "/workspaces/home.workspace",
+        "Live Tasks",
+        "list",
+        "Checklist",
+        "[ ] Define goal\\n[ ] Generate workspace\\n[ ] Mutate widgets\\n[ ] Complete task"
+    );
+
+    workspace_builder_replace_block(
+        "/workspaces/home.workspace",
+        "Checklist",
+        "list",
+        "Checklist",
+        "[ ] Define goal\\n[ ] Generate workspace\\n[ ] Mutate widgets\\n[ ] Complete task"
+    );
+
+    eventlog_add("ai mutated home: checklist widget");
+    return intent_open_home_after_mutation();
+}
+
+static int intent_home_tasks(void) {
+    intent_ensure_home_workspace();
+
+    workspace_builder_replace_block(
+        "/workspaces/home.workspace",
+        "Checklist",
+        "list",
+        "Live Tasks",
+        "Use tasklist\\ntaskopen debug-build\\ntaskdone debug-build"
+    );
+
+    eventlog_add("ai mutated home: live tasks restored");
+    return intent_open_home_after_mutation();
+}
+
+static int intent_home_logs_panel(void) {
+    intent_ensure_home_workspace();
+
+    workspace_builder_replace_block(
+        "/workspaces/home.workspace",
+        "Workspace Engine",
+        "logs",
+        "System Logs",
+        "AI ring: ready\\nIntent engine: ready\\nWorkspace mutation: ready\\nTask state: ready"
+    );
+
+    workspace_builder_replace_block(
+        "/workspaces/home.workspace",
+        "System Logs",
+        "logs",
+        "System Logs",
+        "AI ring: ready\\nIntent engine: ready\\nWorkspace mutation: ready\\nTask state: ready"
+    );
+
+    eventlog_add("ai mutated home: logs panel");
+    return intent_open_home_after_mutation();
+}
+
+static int intent_home_engine_panel(void) {
+    intent_ensure_home_workspace();
+
+    workspace_builder_replace_block(
+        "/workspaces/home.workspace",
+        "System Logs",
+        "status",
+        "Workspace Engine",
+        "Mutable workspace documents: ready\\nTask files: ready\\nIntent engine: ready"
+    );
+
+    eventlog_add("ai mutated home: engine panel restored");
+    return intent_open_home_after_mutation();
+}
+
+
 int intent_handle(const char *text) {
     if (!text || !text[0]) {
         kprintf("Intent: empty\n");
         return 0;
+    }
+
+    if (strcmp(text, "add weather") == 0) {
+        return intent_home_weather();
+    }
+
+    if (strcmp(text, "show weather") == 0) {
+        return intent_home_weather();
+    }
+
+    if (strcmp(text, "weather widget") == 0) {
+        return intent_home_weather();
+    }
+
+    if (strcmp(text, "add weather widget") == 0) {
+        return intent_home_weather();
+    }
+
+    if (strcmp(text, "remove weather") == 0) {
+        return intent_home_command_center();
+    }
+
+    if (strcmp(text, "restore command center") == 0) {
+        return intent_home_command_center();
+    }
+
+    if (strcmp(text, "add checklist") == 0) {
+        return intent_home_checklist();
+    }
+
+    if (strcmp(text, "show checklist") == 0) {
+        return intent_home_checklist();
+    }
+
+    if (strcmp(text, "checklist widget") == 0) {
+        return intent_home_checklist();
+    }
+
+    if (strcmp(text, "remove checklist") == 0) {
+        return intent_home_tasks();
+    }
+
+    if (strcmp(text, "restore tasks") == 0) {
+        return intent_home_tasks();
+    }
+
+    if (strcmp(text, "add logs panel") == 0) {
+        return intent_home_logs_panel();
+    }
+
+    if (strcmp(text, "show logs panel") == 0) {
+        return intent_home_logs_panel();
+    }
+
+    if (strcmp(text, "add system logs") == 0) {
+        return intent_home_logs_panel();
+    }
+
+    if (strcmp(text, "remove logs panel") == 0) {
+        return intent_home_engine_panel();
+    }
+
+    if (strcmp(text, "restore engine panel") == 0) {
+        return intent_home_engine_panel();
     }
 
     if (strcmp(text, "home") == 0) {
