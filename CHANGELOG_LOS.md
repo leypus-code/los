@@ -1,5 +1,19 @@
 # LOS Changelog
 
+## LOS v20.14
+- Added /scripts directory to default VFS layout
+- Added default /scripts/startup.los boot script
+- Added /projects, /notes, and /workspaces default directories
+- Shell now automatically runs /scripts/startup.los on startup
+- Added startup command to rerun the startup script manually
+
+## LOS v20.13
+- Added cp source target for file copying
+- Added mv source target for moving/renaming files and directories
+- Added mkdir -p path for recursive directory creation
+- Added rm -r path for recursive directory removal
+- Updated shell completion/help/docs for new filesystem commands
+
 ## LOS v20.12
 - Added vertical scroll state to LOS editor
 - Editor draw now renders from scroll_line instead of always from top of file

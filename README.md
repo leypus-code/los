@@ -98,9 +98,13 @@ Common commands:
     cd path
     cat file
     mkdir name
+    mkdir -p path
     touch name
     rm name
+    rm -r path
     rename old new
+    cp source target
+    mv source target
 
 Redirects:
 
@@ -169,6 +173,10 @@ LOS supports .los scripts.
 Quiet mode:
 
     run file.los
+
+Run startup script manually:
+
+    startup
 
 Verbose mode:
 

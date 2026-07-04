@@ -46,6 +46,36 @@ void vfs_initialize(void) {
     vfs_mkdir(root, "apps");
     vfs_mkdir(root, "tmp");
     vfs_mkdir(root, "dev");
+
+    vfs_node_t *scripts = vfs_mkdir(root, "scripts");
+    vfs_node_t *workspaces = vfs_mkdir(root, "workspaces");
+    vfs_mkdir(root, "projects");
+    vfs_mkdir(root, "notes");
+
+    if (scripts) {
+        vfs_node_t *startup = vfs_create_file(scripts, "startup.los");
+
+        if (startup) {
+            vfs_write_file(startup,
+                "# LOS startup script\n"
+                "theme terminal\n"
+                "mkdir -p /projects/los\n"
+                "mkdir -p /notes\n"
+                "echo Welcome to LOS > /notes/welcome.txt\n"
+            );
+        }
+    }
+
+    if (workspaces) {
+        vfs_node_t *readme = vfs_create_file(workspaces, "README.txt");
+
+        if (readme) {
+            vfs_write_file(readme,
+                "LOS workspaces directory\n"
+                "Use mkworkspace or workspace commands to create generated UI screens.\n"
+            );
+        }
+    }
 }
 
 vfs_node_t *vfs_get_root(void) {

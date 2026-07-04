@@ -124,12 +124,12 @@ static void shell_save_history(const char *cmd) {
 static const char *completion_commands[] = {
     "help", "commands", "clear", "version", "uptime", "time", "date", "clock",
     "echo", "pwd", "uname", "whoami", "hostname", "true", "false",
-    "ls", "tree", "cd", "cat", "write", "mkdir", "touch", "rm", "rename",
+    "ls", "tree", "cd", "cat", "write", "mkdir", "touch", "rm", "rename", "cp", "mv",
     "nano", "edit", "nc", "wm", "currentapp",
     "themes", "theme",
     "workspaces", "open", "mkworkspace", "workspace", "workstatus",
     "wstitle", "wsadd", "wsbutton", "wsnode", "wsend",
-    "run", "ai", "aistatus", "services", "service", "apps", "runapp", "handlers",
+    "run", "startup", "ai", "aistatus", "services", "service", "apps", "runapp", "handlers",
     "models", "modelstatus", "importmodel", "loadmodel",
     "packages", "install", "remove", "formats", "load",
     "mem", "pages", "paging", "kmalloc", "kfree", "allocpage", "freepage",
@@ -671,9 +671,13 @@ static const char *help_lines[] = {
     "  cat <file>            Print file content",
     "  write <file> <text>   Write text to file",
     "  mkdir <name>          Create directory",
+    "  mkdir -p <path>       Create directory path",
     "  touch <name>          Create file",
     "  rm <name>             Remove file or empty directory",
+    "  rm -r <path>          Remove directory tree recursively",
     "  rename <old> <new>    Rename file or directory",
+    "  cp <src> <dst>        Copy file",
+    "  mv <src> <dst>        Move/rename file or directory",
     "",
     "Editor / UI",
     "  nano <file>           Edit/create file",
@@ -705,6 +709,7 @@ static const char *help_lines[] = {
     "Scripts",
     "  run <file.los>        Run LOS script quietly",
     "  run -v <file.los>     Run LOS script verbose",
+    "  startup               Run /scripts/startup.los",
     "",
     "AI / Services / Apps",
     "  ai <intent>           Send intent to AI/Intent Engine",
@@ -1343,11 +1348,11 @@ static const char *command_lines[] = {
     "Core: help commands clear version uptime time date clock",
     "Linux-like: echo pwd uname uname -a whoami hostname true false",
     "Redirects: echo text > file | echo text >> file",
-    "Filesystem: ls tree cd cat write mkdir touch rm rename",
+    "Filesystem: ls tree cd cat write mkdir mkdir-p touch rm rm-r rename cp mv",
     "Editor/UI: nano edit nc wm currentapp",
     "Themes: themes theme theme list theme next theme prev theme <name>",
     "Workspaces: workspaces open mkworkspace workspace workstatus wstitle wsadd wsbutton wsnode wsend",
-    "Scripts: run run -v",
+    "Scripts: run run -v startup",
     "AI/Services: ai aistatus services service apps runapp handlers",
     "Models/Packages: models modelstatus importmodel loadmodel packages install remove formats load",
     "Kernel/Debug: mem pages paging kmalloc kfree allocpage freepage ps newtask current schedule dmesg kbd panic",
@@ -1356,6 +1361,298 @@ static const char *command_lines[] = {
 };
 
 #define COMMAND_LINE_COUNT (sizeof(command_lines) / sizeof(command_lines[0]))
+
+
+static void shell_copy_node_name(vfs_node_t *node, const char *name) {
+    int i = 0;
+
+    if (!node || !name) return;
+
+    while (name[i] && i < 31) {
+        node->name[i] = name[i];
+        i++;
+    }
+
+    node->name[i] = '\0';
+}
+
+static int shell_split_path(const char *path, char *parent_path, int parent_max, char *name, int name_max) {
+    int len = 0;
+    int last_slash = -1;
+
+    if (!path || !path[0] || !parent_path || !name || parent_max <= 0 || name_max <= 0) {
+        return 0;
+    }
+
+    while (path[len]) {
+        if (path[len] == '/') {
+            last_slash = len;
+        }
+        len++;
+    }
+
+    if (last_slash < 0) {
+        parent_path[0] = '\0';
+
+        int i = 0;
+        while (path[i] && i < name_max - 1) {
+            name[i] = path[i];
+            i++;
+        }
+        name[i] = '\0';
+
+        return name[0] != '\0';
+    }
+
+    if (last_slash == 0) {
+        parent_path[0] = '/';
+        parent_path[1] = '\0';
+    } else {
+        int i = 0;
+        while (i < last_slash && i < parent_max - 1) {
+            parent_path[i] = path[i];
+            i++;
+        }
+        parent_path[i] = '\0';
+    }
+
+    int n = 0;
+    int p = last_slash + 1;
+
+    while (path[p] && n < name_max - 1) {
+        name[n++] = path[p++];
+    }
+
+    name[n] = '\0';
+
+    return name[0] != '\0';
+}
+
+static vfs_node_t *shell_resolve_parent_for_path(const char *path, char *name, int name_max) {
+    char parent_path[96];
+
+    if (!shell_split_path(path, parent_path, 96, name, name_max)) {
+        return 0;
+    }
+
+    if (!parent_path[0]) {
+        return shell_cwd;
+    }
+
+    return vfs_resolve(shell_cwd, parent_path);
+}
+
+static int shell_mkdir_p_path(const char *path) {
+    vfs_node_t *current = 0;
+    int i = 0;
+
+    if (!path || !path[0]) {
+        return 0;
+    }
+
+    if (path[0] == '/') {
+        current = vfs_get_root();
+        i = 1;
+    } else {
+        current = shell_cwd;
+    }
+
+    while (path[i]) {
+        char part[32];
+        int pi = 0;
+
+        while (path[i] == '/') {
+            i++;
+        }
+
+        if (!path[i]) {
+            break;
+        }
+
+        while (path[i] && path[i] != '/' && pi < 31) {
+            part[pi++] = path[i++];
+        }
+
+        part[pi] = '\0';
+
+        if (!part[0]) {
+            continue;
+        }
+
+        vfs_node_t *child = vfs_find_child(current, part);
+
+        if (child) {
+            if (child->type != VFS_DIRECTORY) {
+                return 0;
+            }
+
+            current = child;
+        } else {
+            current = vfs_mkdir(current, part);
+
+            if (!current) {
+                return 0;
+            }
+        }
+
+        while (path[i] == '/') {
+            i++;
+        }
+    }
+
+    return 1;
+}
+
+static int shell_delete_recursive(vfs_node_t *node) {
+    if (!node || !node->parent) {
+        return 0;
+    }
+
+    while (node->children) {
+        if (!shell_delete_recursive(node->children)) {
+            return 0;
+        }
+    }
+
+    if (node->content) {
+        kfree(node->content);
+        node->content = 0;
+        node->size = 0;
+    }
+
+    return vfs_delete(node);
+}
+
+static int shell_is_descendant(vfs_node_t *node, vfs_node_t *maybe_child) {
+    vfs_node_t *cur = maybe_child;
+
+    while (cur) {
+        if (cur == node) {
+            return 1;
+        }
+
+        cur = cur->parent;
+    }
+
+    return 0;
+}
+
+static int shell_move_node(vfs_node_t *node, vfs_node_t *new_parent, const char *new_name) {
+    if (!node || !node->parent || !new_parent || new_parent->type != VFS_DIRECTORY || !new_name || !new_name[0]) {
+        return 0;
+    }
+
+    if (node->type == VFS_DIRECTORY && shell_is_descendant(node, new_parent)) {
+        return 0;
+    }
+
+    vfs_node_t *existing = vfs_find_child(new_parent, new_name);
+
+    if (existing && existing != node) {
+        return 0;
+    }
+
+    vfs_node_t *old_parent = node->parent;
+    vfs_node_t *cur = old_parent->children;
+    vfs_node_t *prev = 0;
+
+    while (cur) {
+        if (cur == node) {
+            if (prev) {
+                prev->next = cur->next;
+            } else {
+                old_parent->children = cur->next;
+            }
+            break;
+        }
+
+        prev = cur;
+        cur = cur->next;
+    }
+
+    if (!cur) {
+        return 0;
+    }
+
+    shell_copy_node_name(node, new_name);
+    node->parent = new_parent;
+    node->next = new_parent->children;
+    new_parent->children = node;
+
+    return 1;
+}
+
+static int shell_copy_file_command(const char *src_path, const char *dst_path) {
+    vfs_node_t *src = vfs_resolve(shell_cwd, src_path);
+
+    if (!src || src->type != VFS_FILE) {
+        shell_error("cp: source file not found");
+        return 1;
+    }
+
+    vfs_node_t *dst_existing = vfs_resolve(shell_cwd, dst_path);
+    vfs_node_t *dst = 0;
+
+    if (dst_existing && dst_existing->type == VFS_DIRECTORY) {
+        dst = vfs_create_file(dst_existing, src->name);
+    } else {
+        dst = shell_get_or_create_file_path(dst_path);
+    }
+
+    if (!dst || dst->type != VFS_FILE) {
+        shell_error("cp: cannot create target file");
+        return 1;
+    }
+
+    if (!vfs_write_file(dst, src->content ? src->content : "")) {
+        shell_error("cp: write failed");
+        return 1;
+    }
+
+    shell_ok("Copied");
+    return 1;
+}
+
+static int shell_move_command(const char *src_path, const char *dst_path) {
+    char name[40];
+    vfs_node_t *src = vfs_resolve(shell_cwd, src_path);
+
+    if (!src || !src->parent) {
+        shell_error("mv: source not found");
+        return 1;
+    }
+
+    vfs_node_t *dst_existing = vfs_resolve(shell_cwd, dst_path);
+    vfs_node_t *new_parent = 0;
+    const char *new_name = 0;
+
+    if (dst_existing && dst_existing->type == VFS_DIRECTORY) {
+        new_parent = dst_existing;
+        new_name = src->name;
+    } else {
+        new_parent = shell_resolve_parent_for_path(dst_path, name, 40);
+        new_name = name;
+
+        if (dst_existing) {
+            shell_error("mv: target already exists");
+            return 1;
+        }
+    }
+
+    if (!new_parent || new_parent->type != VFS_DIRECTORY || !new_name || !new_name[0]) {
+        shell_error("mv: invalid target");
+        return 1;
+    }
+
+    if (!shell_move_node(src, new_parent, new_name)) {
+        shell_error("mv: failed");
+        return 1;
+    }
+
+    shell_ok("Moved");
+    return 1;
+}
+
 
 static void shell_execute(const char *command) {
     terminal_writestring("\n");
@@ -1583,6 +1880,84 @@ static void shell_execute(const char *command) {
         }
 
 
+
+    } else if (
+        command[0] == 'c' &&
+        command[1] == 'p' &&
+        command[2] == ' '
+    ) {
+        char *rest = (char *)(command + 3);
+        char src[64];
+        char dst[64];
+
+        if (!shell_next_word(&rest, src, 64) || !shell_next_word(&rest, dst, 64)) {
+            shell_error("Usage: cp source target");
+            return;
+        }
+
+        shell_copy_file_command(src, dst);
+        return;
+
+    } else if (
+        command[0] == 'm' &&
+        command[1] == 'v' &&
+        command[2] == ' '
+    ) {
+        char *rest = (char *)(command + 3);
+        char src[64];
+        char dst[64];
+
+        if (!shell_next_word(&rest, src, 64) || !shell_next_word(&rest, dst, 64)) {
+            shell_error("Usage: mv source target");
+            return;
+        }
+
+        shell_move_command(src, dst);
+        return;
+
+    } else if (
+        command[0] == 'm' &&
+        command[1] == 'k' &&
+        command[2] == 'd' &&
+        command[3] == 'i' &&
+        command[4] == 'r' &&
+        command[5] == ' ' &&
+        command[6] == '-' &&
+        command[7] == 'p' &&
+        command[8] == ' '
+    ) {
+        const char *path = command + 9;
+
+        if (!shell_mkdir_p_path(path)) {
+            shell_error("mkdir -p: failed");
+            return;
+        }
+
+        shell_ok("Directory path created");
+        return;
+
+    } else if (
+        command[0] == 'r' &&
+        command[1] == 'm' &&
+        command[2] == ' ' &&
+        command[3] == '-' &&
+        command[4] == 'r' &&
+        command[5] == ' '
+    ) {
+        vfs_node_t *target = vfs_resolve(shell_cwd, command + 6);
+
+        if (!target || !target->parent) {
+            shell_error("rm -r: target not found");
+            return;
+        }
+
+        if (!shell_delete_recursive(target)) {
+            shell_error("rm -r: failed");
+            return;
+        }
+
+        shell_ok("Removed recursively");
+        return;
 
     } else if (strcmp(command, "scrollup") == 0) {
         terminal_scroll_up_view();
@@ -2017,6 +2392,10 @@ static void shell_execute(const char *command) {
 
         return;
 
+    } else if (strcmp(command, "startup") == 0) {
+        shell_execute("run /scripts/startup.los");
+        return;
+
     } else if (strcmp(command, "workspaces") == 0) {
         service_call("workspace", "list", "");
     } else if (
@@ -2354,7 +2733,15 @@ void shell_initialize(void) {
         shell_cwd = vfs_get_root();
     }
 
-    terminal_writestring("Type 'help' to see commands.");
+    terminal_writestring("Type 'help' to see commands. Startup: /scripts/startup.los");
+    terminal_writestring("\n");
+
+    vfs_node_t *startup = vfs_resolve(shell_cwd, "/scripts/startup.los");
+
+    if (startup && startup->type == VFS_FILE) {
+        shell_execute("run /scripts/startup.los");
+    }
+
     shell_prompt_newline();
 }
 

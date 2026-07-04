@@ -84,6 +84,10 @@ Then test the changed feature inside QEMU.
 
     LOS v20.12
 
+Startup script:
+
+    /scripts/startup.los
+
 Important features at this point:
 
 - clean build
