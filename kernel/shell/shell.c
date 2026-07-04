@@ -128,7 +128,7 @@ static const char *completion_commands[] = {
     "nano", "edit", "nc", "wm", "currentapp",
     "themes", "theme",
     "workspaces", "open", "mkworkspace", "workspace", "workstatus",
-    "wstitle", "wsadd", "wsbutton", "wsnode", "wsend",
+    "wstemplate", "wstitle", "wsadd", "wsbutton", "wsnode", "wsend",
     "run", "startup", "ai", "aistatus", "services", "service", "apps", "runapp", "handlers",
     "models", "modelstatus", "importmodel", "loadmodel",
     "packages", "install", "remove", "formats", "load",
@@ -700,6 +700,7 @@ static const char *help_lines[] = {
     "  mkworkspace <name>    Create workspace file",
     "  workspace <kind>      Open generated workspace kind",
     "  workstatus            Show workspace/layout status",
+    "  wstemplate <t> <file> Create workspace from template",
     "  wstitle <file> \"text\" Set workspace title",
     "  wsadd <file> ...      Add workspace block with quoted args",
     "  wsbutton <file> ...   Add workspace button with quoted args",
@@ -1426,7 +1427,7 @@ static const char *command_lines[] = {
     "Filesystem: ls tree cd cat write mkdir mkdir-p touch rm rm-r rename cp mv",
     "Editor/UI: nano edit nc wm currentapp",
     "Themes: themes theme theme list theme next theme prev theme <name>",
-    "Workspaces: workspaces open mkworkspace workspace workstatus wstitle wsadd wsbutton wsnode wsend",
+    "Workspaces: workspaces open mkworkspace workspace workstatus wstemplate wstitle wsadd wsbutton wsnode wsend",
     "Scripts: run run -v startup",
     "AI/Services: ai aistatus services service apps runapp handlers",
     "Models/Packages: models modelstatus importmodel loadmodel packages install remove formats load",
@@ -2192,6 +2193,36 @@ static void shell_execute(const char *command) {
 
 
 
+
+    } else if (
+        command[0] == 'w' &&
+        command[1] == 's' &&
+        command[2] == 't' &&
+        command[3] == 'e' &&
+        command[4] == 'm' &&
+        command[5] == 'p' &&
+        command[6] == 'l' &&
+        command[7] == 'a' &&
+        command[8] == 't' &&
+        command[9] == 'e' &&
+        command[10] == ' '
+    ) {
+        char *rest = (char *)(command + 11);
+        char kind[32];
+        char name[64];
+
+        if (!shell_next_arg(&rest, kind, 32) || !shell_next_arg(&rest, name, 64)) {
+            shell_error("Usage: wstemplate coding|system|notes|services file.workspace");
+            return;
+        }
+
+        if (workspace_builder_template(kind, name)) {
+            shell_ok("Workspace template created");
+        } else {
+            shell_error("Workspace template failed");
+        }
+
+        return;
 
     } else if (
         command[0] == 'w' &&

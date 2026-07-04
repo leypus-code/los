@@ -1,5 +1,11 @@
 # LOS Changelog
 
+## LOS v20.16
+- Added workspace_builder_template API
+- Added wstemplate command
+- Added coding, system, notes, and services workspace templates
+- Workspace templates generate structured .workspace files with blocks and layout nodes
+
 ## LOS v20.15b
 - Fixed cat command for quoted paths
 - Added quoted path parsing for cd, nano, edit, and open

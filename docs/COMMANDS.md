@@ -184,3 +184,29 @@ Examples:
     wstitle main.workspace "Main Workspace"
     wsadd main.workspace panel "System Status" "Everything is OK"
     wsbutton main.workspace "Actions" "Build" "run /scripts/build.los"
+
+
+## Workspace templates
+
+LOS can generate workspace files from predefined templates.
+
+Examples:
+
+    wstemplate coding coding.workspace
+    open coding.workspace
+
+    wstemplate system system.workspace
+    open system.workspace
+
+    wstemplate notes notes.workspace
+    open notes.workspace
+
+    wstemplate services services.workspace
+    open services.workspace
+
+Available templates:
+
+    coding
+    system
+    notes
+    services

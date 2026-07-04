@@ -687,6 +687,113 @@ int workspace_builder_open(const char *name) {
     return 1;
 }
 
+
+int workspace_builder_template(const char *kind, const char *name) {
+    if (!workspaces_dir || !kind || !name || !kind[0] || !name[0]) {
+        return 0;
+    }
+
+    vfs_node_t *file = vfs_find_child(workspaces_dir, name);
+    if (!file) {
+        file = vfs_create_file(workspaces_dir, name);
+    }
+
+    if (!file) {
+        return 0;
+    }
+
+    if (strcmp(kind, "coding") == 0) {
+        vfs_write_file(file,
+            "WORKSPACE\n"
+            "TITLE=Coding Workspace\n"
+            "NODE=root|vertical|1\n"
+            "NODE=row|horizontal|3\n"
+            "BLOCK=list|Project Files|/projects\\n/src\\n/scripts\\n/docs\n"
+            "BLOCK=code|Editor|main.c\\n// open a file from Project Files\\n// editor block stub\n"
+            "BLOCK=ai|AI Assistant|Explain error\\nGenerate patch\\nPrepare commit\n"
+            "END\n"
+            "NODE=row|horizontal|2\n"
+            "BLOCK=terminal|Terminal|make clean && make run\\ngit status\\n\n"
+            "BLOCK=logs|Build Logs|No build started\\nWaiting for command\n"
+            "BLOCK=button|Run Build|Build|fs.touch build.request\n"
+            "END\n"
+            "END\n"
+        );
+
+        eventlog_add("coding workspace template created");
+        return 1;
+    }
+
+    if (strcmp(kind, "system") == 0) {
+        vfs_write_file(file,
+            "WORKSPACE\n"
+            "TITLE=System Workspace\n"
+            "NODE=root|vertical|1\n"
+            "NODE=row|horizontal|3\n"
+            "BLOCK=status|Kernel|LOS kernel online\\nMode: i386\\nVFS: RAM\n"
+            "BLOCK=status|Memory|Heap active\\nPaging enabled\\nPMM ready\n"
+            "BLOCK=status|Services|AI runtime ready\\nService bus ready\\nIntent engine ready\n"
+            "END\n"
+            "NODE=row|horizontal|2\n"
+            "BLOCK=logs|Event Log|Use dmesg for details\\nSystem initialized\n"
+            "BLOCK=button|Actions|Create Health Report|fs.touch health.report\n"
+            "END\n"
+            "END\n"
+        );
+
+        eventlog_add("system workspace template created");
+        return 1;
+    }
+
+    if (strcmp(kind, "notes") == 0) {
+        vfs_write_file(file,
+            "WORKSPACE\n"
+            "TITLE=Notes Workspace\n"
+            "NODE=root|vertical|1\n"
+            "NODE=row|horizontal|2\n"
+            "BLOCK=list|Notes|/notes/welcome.txt\\n/notes/todo.txt\\n/notes/ideas.txt\n"
+            "BLOCK=text|Current Note|Write notes with echo or nano\\nExample:\\nnano /notes/todo.txt\n"
+            "END\n"
+            "NODE=row|horizontal|2\n"
+            "BLOCK=ai|AI Summary|Summarize notes\\nFind todos\\nCreate plan\n"
+            "BLOCK=button|Actions|Create todo.txt|fs.touch /notes/todo.txt\n"
+            "END\n"
+            "END\n"
+        );
+
+        eventlog_add("notes workspace template created");
+        return 1;
+    }
+
+    if (strcmp(kind, "services") == 0) {
+        vfs_write_file(file,
+            "WORKSPACE\n"
+            "TITLE=Services Workspace\n"
+            "BLOCK=status|Service Bus|service bus online\\nworkspace service ready\n"
+            "BLOCK=status|AI Runtime|ai runtime initialized\\nintent engine initialized\n"
+            "BLOCK=status|Apps|editor\\nnorton\\nworkspace layout\n"
+            "BLOCK=terminal|Service Calls|service workspace.list none\\nservice model.status none\n"
+            "BLOCK=logs|Events|Use dmesg to inspect event log\n"
+            "BLOCK=button|Action|Create service check|fs.touch service.check\n"
+        );
+
+        eventlog_add("services workspace template created");
+        return 1;
+    }
+
+    vfs_write_file(file,
+        "WORKSPACE\n"
+        "TITLE=Custom Template Workspace\n"
+        "BLOCK=status|Status|Ready\n"
+        "BLOCK=text|Notes|Unknown template kind\\nEdit this workspace file\n"
+        "BLOCK=ai|AI|Template generation stub\n"
+    );
+
+    eventlog_add("custom workspace template created");
+    return 1;
+}
+
+
 int workspace_builder_create(const char *name, const char *kind) {
     if (!workspaces_dir) return 0;
     create_workspace_file(name, kind);
