@@ -1,5 +1,19 @@
 # LOS Changelog
 
+## LOS v22.4
+- Added AI Provider Contract v1
+- Added model command to show/select local or host AI provider
+- Added aipacket command to inspect the context packet that future AI models receive
+- Kept embedded local AI minimal instead of expanding hardcoded natural-language phrases
+- This prepares LOS for real model integration without turning the kernel into a phrase-matching script
+
+## LOS v22.3
+- Added AI system context storage for workspace, last intent, and last answer
+- Added context command
+- Local AI can now answer where am I, what can I do, status, and what happened based on system context
+- Home, screen, and chatreset now update AI workspace context
+- This starts making the embedded model context-aware instead of pure keyword routing
+
 ## LOS v22.2a
 - Fixed AI input mode fallback for unknown shell input
 - Unknown natural-language input now routes into ai_bridge_talk when aimode is on

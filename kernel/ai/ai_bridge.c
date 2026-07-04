@@ -476,7 +476,54 @@ static void ai_bridge_update_web_widget(const char *query, const char *answer) {
 
 
 
+
 static int ai_bridge_use_host = 0;
+
+static char ai_context_workspace[64] = "Chat Screen";
+static char ai_context_last_intent[96] = "none";
+static char ai_context_last_answer[160] = "none";
+
+void ai_bridge_context_set_workspace(const char *name) {
+    ai_bridge_copy_safe(ai_context_workspace, name ? name : "unknown", 64);
+}
+
+void ai_bridge_context_set_last_intent(const char *intent) {
+    ai_bridge_copy_safe(ai_context_last_intent, intent ? intent : "none", 96);
+}
+
+void ai_bridge_context_show(void) {
+    kprintf("AI Context\n");
+    kprintf("Workspace: %s\n", ai_context_workspace);
+    kprintf("Host bridge: %s\n", ai_bridge_use_host ? "on" : "off");
+    kprintf("AI input mode: shell-owned\n");
+    kprintf("Last intent: %s\n", ai_context_last_intent);
+    kprintf("Last answer: %s\n", ai_context_last_answer);
+}
+
+static void ai_bridge_context_set_answer(const char *answer) {
+    ai_bridge_copy_safe(ai_context_last_answer, answer ? answer : "none", 160);
+}
+
+
+static void ai_bridge_append(char *dst, const char *src, int max) {
+    int pos = 0;
+    int i = 0;
+
+    if (!dst || !src || max <= 0) {
+        return;
+    }
+
+    while (dst[pos] && pos < max - 1) {
+        pos++;
+    }
+
+    while (src[i] && pos < max - 1) {
+        dst[pos++] = src[i++];
+    }
+
+    dst[pos] = '\0';
+}
+
 
 void ai_bridge_set_host_enabled(int enabled) {
     ai_bridge_use_host = enabled ? 1 : 0;
@@ -489,6 +536,37 @@ int ai_bridge_host_enabled(void) {
 void ai_bridge_status(void) {
     kprintf("AI Bridge host mode: %s\n", ai_bridge_use_host ? "on" : "off");
     kprintf("Local embedded AI: on\n");
+}
+
+
+void ai_bridge_model_status(void) {
+    kprintf("AI Provider\n");
+    kprintf("Current: %s\n", ai_bridge_use_host ? "host" : "local");
+    kprintf("Contract: v1\n");
+    kprintf("Local fallback: on\n");
+    kprintf("Host bridge: %s\n", ai_bridge_use_host ? "on" : "off");
+    kprintf("Outputs: answer, intent, web, ui_patch later\n");
+}
+
+void ai_bridge_model_set_local(void) {
+    ai_bridge_set_host_enabled(0);
+    kprintf("[OK] AI provider set to local\n");
+}
+
+void ai_bridge_model_set_host(void) {
+    ai_bridge_set_host_enabled(1);
+    kprintf("[OK] AI provider set to host\n");
+}
+
+void ai_bridge_packet_show(void) {
+    kprintf("AI Request Packet v1\n");
+    kprintf("workspace=%s\n", ai_context_workspace);
+    kprintf("provider=%s\n", ai_bridge_use_host ? "host" : "local");
+    kprintf("host_bridge=%s\n", ai_bridge_use_host ? "on" : "off");
+    kprintf("last_intent=%s\n", ai_context_last_intent);
+    kprintf("last_answer=%s\n", ai_context_last_answer);
+    kprintf("available_outputs=answer,intent,web,ui_patch\n");
+    kprintf("available_intents=home,build dashboard,coding mode,blank canvas,reset home,debug build error,write notes,plan project\n");
 }
 
 static char ai_bridge_ascii_lower(char c) {
@@ -531,6 +609,8 @@ static int ai_bridge_contains_ci(const char *text, const char *needle) {
 static int ai_bridge_local_answer(const char *prompt, const char *answer) {
     kprintf("Local AI: %s\n", answer);
     ring_log_operation("local model: answer");
+    ai_bridge_context_set_last_intent("chat answer");
+    ai_bridge_context_set_answer(answer);
     ai_bridge_update_chat_widget(prompt, answer);
     ai_bridge_open_chat_after_result();
     return 1;
@@ -539,6 +619,8 @@ static int ai_bridge_local_answer(const char *prompt, const char *answer) {
 static int ai_bridge_local_intent(const char *prompt, const char *intent) {
     kprintf("Local AI: %s\n", intent);
     ring_log_operation("local model: intent");
+    ai_bridge_context_set_last_intent(intent);
+    ai_bridge_context_set_answer(intent);
     ai_bridge_update_chat_widget(prompt, intent);
 
     if (!intent_handle(intent)) {
@@ -636,11 +718,44 @@ static int ai_bridge_local_execute(const char *prompt) {
         );
     }
 
-    if (ai_bridge_contains_ci(prompt, "help")) {
+    if (ai_bridge_contains_ci(prompt, "where am i") ||
+        ai_bridge_contains_ci(prompt, "current screen") ||
+        ai_bridge_contains_ci(prompt, "current workspace")) {
+        char msg[220];
+
+        msg[0] = '\0';
+        ai_bridge_append(msg, "You are in ", 220);
+        ai_bridge_append(msg, ai_context_workspace, 220);
+        ai_bridge_append(msg, ". Host bridge is ", 220);
+        ai_bridge_append(msg, ai_bridge_use_host ? "on" : "off", 220);
+        ai_bridge_append(msg, ". Last intent: ", 220);
+        ai_bridge_append(msg, ai_context_last_intent, 220);
+        ai_bridge_append(msg, ".", 220);
+
+        return ai_bridge_local_answer(prompt, msg);
+    }
+
+    if (ai_bridge_contains_ci(prompt, "what can i do") ||
+        ai_bridge_contains_ci(prompt, "help") ||
+        ai_bridge_contains_ci(prompt, "commands")) {
         return ai_bridge_local_answer(
             prompt,
-            "Try: talk make dashboard, talk coding mode, talk what is docker, talk weather in Vienna, or bridge on for host AI."
+            "You can type naturally: make dashboard, coding mode, blank canvas, debug build, notes, plan project, what is docker, or bridge on for web tools."
         );
+    }
+
+    if (ai_bridge_contains_ci(prompt, "what happened") ||
+        ai_bridge_contains_ci(prompt, "last action") ||
+        ai_bridge_contains_ci(prompt, "status")) {
+        char msg[240];
+
+        msg[0] = '\0';
+        ai_bridge_append(msg, "Last intent: ", 240);
+        ai_bridge_append(msg, ai_context_last_intent, 240);
+        ai_bridge_append(msg, ". Last answer: ", 240);
+        ai_bridge_append(msg, ai_context_last_answer, 240);
+
+        return ai_bridge_local_answer(prompt, msg);
     }
 
     return ai_bridge_local_answer(

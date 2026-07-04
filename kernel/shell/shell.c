@@ -2021,7 +2021,7 @@ static const char *command_lines[] = {
     "Themes: themes theme theme list theme next theme prev theme <name>",
     "Workspaces: workspaces open mkworkspace workspace workstatus wsblocks wsremove wsreplace wsaction wstemplate wstitle wsadd wsbutton wsnode wsend",
     "Scripts: run run -v startup",
-    "AI/Services: say talk aimode bridge transcript ask web ring chat ops intent gentask tasks tasklist taskshow tasklog taskopen taskstatus tasknext taskreopen taskdone ai aistatus services service apps runapp handlers",
+    "AI/Services: say talk model aipacket context aimode bridge transcript ask web ring chat ops intent gentask tasks tasklist taskshow tasklog taskopen taskstatus tasknext taskreopen taskdone ai aistatus services service apps runapp handlers",
     "Models/Packages: models modelstatus importmodel loadmodel packages install remove formats load",
     "Kernel/Debug: mem pages paging kmalloc kfree allocpage freepage ps newtask current schedule dmesg kbd panic",
     "Scrollback: scrollup scrolldown top bottom PageUp PageDown",
@@ -2365,6 +2365,7 @@ static void shell_execute(const char *command) {
     } else if (strcmp(command, "chatreset") == 0) {
         service_call("workspace", "template", "chat /workspaces/chat.workspace");
         shell_ok("Chat Screen reset");
+        ai_bridge_context_set_workspace("Chat Screen");
         intent_handle("chat screen");
         return;
     } else if (strcmp(command, "resetui") == 0) {
@@ -2381,6 +2382,7 @@ static void shell_execute(const char *command) {
         shell_ok("Chat Screen reset");
         return;
     } else if (strcmp(command, "screen") == 0 || strcmp(command, "chatui") == 0) {
+        ai_bridge_context_set_workspace("Chat Screen");
         intent_handle("chat screen");
         return;
     } else if (strcmp(command, "home") == 0 || strcmp(command, "los") == 0) {
@@ -3888,6 +3890,23 @@ static void shell_execute(const char *command) {
         return;
     } else if (strcmp(command, "transcript") == 0) {
         ai_bridge_show_transcript();
+        return;
+
+    } else if (strcmp(command, "model") == 0) {
+        ai_bridge_model_status();
+        return;
+    } else if (strcmp(command, "model local") == 0) {
+        ai_bridge_model_set_local();
+        return;
+    } else if (strcmp(command, "model host") == 0) {
+        ai_bridge_model_set_host();
+        return;
+    } else if (strcmp(command, "aipacket") == 0) {
+        ai_bridge_packet_show();
+        return;
+
+    } else if (strcmp(command, "context") == 0) {
+        ai_bridge_context_show();
         return;
 
     } else if (strcmp(command, "aimode") == 0) {
