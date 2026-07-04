@@ -1,5 +1,17 @@
 # LOS Changelog
 
+## LOS v20.28a
+- Added ring module object to Makefile
+- Added compile rule for kernel/ai/ring.c
+- Removed minor warnings from intent and legacy shell parser
+
+## LOS v20.28
+- Added AI Ring state machine module
+- Added ring command to inspect/set ring state
+- Added chat command to simulate final ring/chat UX flow
+- Ring chat expands, thinks, invokes intent, and docks after successful workspace generation
+- Updated AI Home to reference ring/chat MVP commands
+
 ## LOS v20.27
 - Added LOS AI Home workspace template
 - Added home and los shell commands

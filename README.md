@@ -586,3 +586,32 @@ AI Home represents the future ring/chat UX:
     generated workspaces
     task dashboard
     mutable workspace controls
+
+
+## AI Ring state machine
+
+LOS includes a text-mode MVP of the future AI ring UX.
+
+Commands:
+
+    ring
+    ring idle
+    ring chat
+    ring listening
+    ring thinking
+    ring docked
+
+Chat command:
+
+    chat "debug build error"
+    chat "system overview"
+    chat "write notes"
+    chat "plan project"
+
+The chat command simulates the final UX flow:
+
+    centered input / chat opens
+    AI thinks
+    intent runs
+    workspace is generated
+    ring docks

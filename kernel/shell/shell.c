@@ -28,6 +28,7 @@
 #include "../include/model.h"
 #include "../include/service.h"
 #include "../include/intent.h"
+#include "../include/ring.h"
 #include "../include/norton.h"
 #include "../include/pmm.h"
 #include "../include/paging.h"
@@ -152,7 +153,7 @@ static const char *completion_commands[] = {
     "themes", "theme",
     "workspaces", "open", "mkworkspace", "workspace", "workstatus",
     "wsblocks", "wsremove", "wsreplace", "wsaction", "wstemplate", "wstitle", "wsadd", "wsbutton", "wsnode", "wsend",
-    "run", "startup", "intent", "gentask", "tasks", "tasklist", "taskshow", "tasklog", "taskstatus", "tasknext", "taskreopen", "taskdone", "taskopen", "ai", "aistatus", "services", "service", "apps", "runapp", "handlers",
+    "run", "startup", "intent", "chat", "ring", "gentask", "tasks", "tasklist", "taskshow", "tasklog", "taskstatus", "tasknext", "taskreopen", "taskdone", "taskopen", "ai", "aistatus", "services", "service", "apps", "runapp", "handlers",
     "models", "modelstatus", "importmodel", "loadmodel",
     "packages", "install", "remove", "formats", "load",
     "mem", "pages", "paging", "kmalloc", "kfree", "allocpage", "freepage",
@@ -783,6 +784,9 @@ static const char *help_lines[] = {
     "  startup               Run /scripts/startup.los",
     "",
     "AI / Services / Apps",
+    "  ring                  Show AI ring state",
+    "  ring <state>          Set AI ring state",
+    "  chat \"text\"         AI ring chat command",
     "  intent \"text\"       Run rule-based intent",
     "  gentask <kind>        Generate task workspace",
     "  tasks                 List generated task files",
@@ -901,7 +905,7 @@ __attribute__((unused)) static void shell_pager_key(int key) {
 
 static void shell_execute(const char *command);
 
-static int shell_next_word(char **cursor, char *out, int max) {
+__attribute__((unused)) static int shell_next_word(char **cursor, char *out, int max) {
     char *p = *cursor;
     int len = 0;
 
@@ -1933,7 +1937,7 @@ static const char *command_lines[] = {
     "Themes: themes theme theme list theme next theme prev theme <name>",
     "Workspaces: workspaces open mkworkspace workspace workstatus wsblocks wsremove wsreplace wsaction wstemplate wstitle wsadd wsbutton wsnode wsend",
     "Scripts: run run -v startup",
-    "AI/Services: intent gentask tasks tasklist taskshow tasklog taskopen taskstatus tasknext taskreopen taskdone ai aistatus services service apps runapp handlers",
+    "AI/Services: ring chat intent gentask tasks tasklist taskshow tasklog taskopen taskstatus tasknext taskreopen taskdone ai aistatus services service apps runapp handlers",
     "Models/Packages: models modelstatus importmodel loadmodel packages install remove formats load",
     "Kernel/Debug: mem pages paging kmalloc kfree allocpage freepage ps newtask current schedule dmesg kbd panic",
     "Scrollback: scrollup scrolldown top bottom PageUp PageDown",
@@ -3693,6 +3697,49 @@ static void shell_execute(const char *command) {
         }
 
         shell_error("Unknown generated task");
+        return;
+
+    } else if (strcmp(command, "ring") == 0) {
+        ring_status();
+        return;
+
+    } else if (
+        command[0] == 'r' &&
+        command[1] == 'i' &&
+        command[2] == 'n' &&
+        command[3] == 'g' &&
+        command[4] == ' '
+    ) {
+        char text[64];
+
+        shell_copy_unquoted_rest(command + 5, text, 64);
+
+        if (!ring_handle_command(text)) {
+            shell_error("Ring command failed");
+        }
+
+        return;
+
+    } else if (
+        command[0] == 'c' &&
+        command[1] == 'h' &&
+        command[2] == 'a' &&
+        command[3] == 't' &&
+        command[4] == ' '
+    ) {
+        char text[256];
+
+        shell_copy_unquoted_rest(command + 5, text, 256);
+
+        if (!text[0]) {
+            shell_error("Usage: chat \"text\"");
+            return;
+        }
+
+        if (!ring_chat(text)) {
+            shell_error("Chat failed");
+        }
+
         return;
 
     } else if (

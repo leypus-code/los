@@ -75,8 +75,6 @@ static int intent_workspace_template(const char *kind, const char *file, int ope
     char spec[128];
     int pos = 0;
 
-    const char *prefix = "";
-
     for (int i = 0; kind && kind[i] && pos < 126; i++) {
         spec[pos++] = kind[i];
     }

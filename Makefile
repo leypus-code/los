@@ -29,6 +29,7 @@ OBJS=kernel/boot.o \
      kernel/ui_manager/ui.o \
      kernel/wm/wm.o \
      kernel/ai/ai.o \
+     kernel/ai/ring.o \
      kernel/model/model.o \
      kernel/service/service.o \
      kernel/intent/intent.o \
@@ -130,6 +131,9 @@ kernel/wm/wm.o: kernel/wm/wm.c
 
 kernel/ai/ai.o: kernel/ai/ai.c
 	$(CC) $(CFLAGS) -c kernel/ai/ai.c -o kernel/ai/ai.o
+
+kernel/ai/ring.o: kernel/ai/ring.c
+	$(CC) $(CFLAGS) -c kernel/ai/ring.c -o kernel/ai/ring.o
 
 kernel/model/model.o: kernel/model/model.c
 	$(CC) $(CFLAGS) -c kernel/model/model.c -o kernel/model/model.o

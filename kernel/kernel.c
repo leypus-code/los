@@ -23,6 +23,7 @@
 #include "include/model.h"
 #include "include/service.h"
 #include "include/intent.h"
+#include "include/ring.h"
 #include "include/layout.h"
 #include "include/workspace_builder.h"
 #include "include/fileassoc.h"
@@ -123,6 +124,7 @@ void kernel_init(void) {
 
     log_info("Initializing intent engine...");
     intent_initialize();
+    ring_initialize();
     log_ok("Intent engine initialized");
 
     log_info("Initializing layout engine...");
