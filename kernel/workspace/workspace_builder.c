@@ -854,6 +854,8 @@ int workspace_builder_template(const char *kind, const char *name) {
             "BLOCK=terminal|Terminal|make clean && make run\\ngit status\\n\n"
             "BLOCK=logs|Build Logs|No build started\\nWaiting for command\n"
             "BLOCK=button|Run Build|Build|shell:run /scripts/build.los\n"
+            "BLOCK=button|Task|Mark Active|shell:taskstatus coding active\n"
+            "BLOCK=button|Task|Mark Done|shell:taskdone coding\n"
             "END\n"
             "END\n"
         );
@@ -876,6 +878,8 @@ int workspace_builder_template(const char *kind, const char *name) {
             "NODE=row|horizontal|2\n"
             "BLOCK=logs|Event Log|Use dmesg for details\\nSystem initialized\n"
             "BLOCK=button|Actions|Create Health Report|shell:echo System OK > /notes/health.report\n"
+            "BLOCK=button|Task|Mark Active|shell:taskstatus system active\n"
+            "BLOCK=button|Task|Mark Done|shell:taskdone system\n"
             "END\n"
             "END\n"
         );
@@ -897,6 +901,8 @@ int workspace_builder_template(const char *kind, const char *name) {
             "NODE=row|horizontal|2\n"
             "BLOCK=ai|AI Summary|Summarize notes\\nFind todos\\nCreate plan\n"
             "BLOCK=button|Actions|Create todo.txt|shell:echo TODO > /notes/todo.txt\n"
+            "BLOCK=button|Task|Mark Active|shell:taskstatus notes active\n"
+            "BLOCK=button|Task|Mark Done|shell:taskdone notes\n"
             "END\n"
             "END\n"
         );
@@ -916,6 +922,8 @@ int workspace_builder_template(const char *kind, const char *name) {
             "BLOCK=terminal|Service Calls|service workspace.list none\\nservice model.status none\n"
             "BLOCK=logs|Events|Use dmesg to inspect event log\n"
             "BLOCK=button|Action|Create service check|shell:echo Services OK > /notes/service.check\n"
+            "BLOCK=button|Task|Mark Active|shell:taskstatus services active\n"
+            "BLOCK=button|Task|Mark Done|shell:taskdone services\n"
         );
 
         workspace_write_task_file(name, "Services Workspace", "create services workspace", "services");
@@ -936,7 +944,9 @@ int workspace_builder_template(const char *kind, const char *name) {
             "NODE=row|horizontal|2\n"
             "BLOCK=terminal|Build Commands|make clean\nmake run\ngit status\n"
             "BLOCK=logs|Build Log|No captured log yet\nUse /notes/build.log for script output\n"
-            "BLOCK=button|Actions|Run Build|shell:run /scripts/build.los\n"
+            "BLOCK=button|Run|Run Build|shell:run /scripts/build.los\n"
+            "BLOCK=button|Task|Mark Active|shell:taskstatus debug-build active\n"
+            "BLOCK=button|Task|Mark Done|shell:taskdone debug-build\n"
             "END\n"
             "END\n"
         );
@@ -959,6 +969,8 @@ int workspace_builder_template(const char *kind, const char *name) {
             "NODE=row|horizontal|2\n"
             "BLOCK=logs|Diagnostics|Use dmesg\nUse services\nUse workstatus\n"
             "BLOCK=button|Actions|Show Services|shell:services\n"
+            "BLOCK=button|Task|Mark Active|shell:taskstatus system-overview active\n"
+            "BLOCK=button|Task|Mark Done|shell:taskdone system-overview\n"
             "END\n"
             "END\n"
         );
@@ -980,6 +992,8 @@ int workspace_builder_template(const char *kind, const char *name) {
             "NODE=row|horizontal|2\n"
             "BLOCK=ai|Writing Assistant|Summarize\nRewrite\nExtract todos\nPlan next steps\n"
             "BLOCK=button|Actions|Create Draft|shell:echo Draft started > /notes/draft.txt\n"
+            "BLOCK=button|Task|Mark Active|shell:taskstatus writing active\n"
+            "BLOCK=button|Task|Mark Done|shell:taskdone writing\n"
             "END\n"
             "END\n"
         );
@@ -1002,6 +1016,8 @@ int workspace_builder_template(const char *kind, const char *name) {
             "NODE=row|horizontal|2\n"
             "BLOCK=text|Notes|Use /notes/plan.txt\nUse startup.los for boot tasks\n"
             "BLOCK=button|Actions|Create Plan File|shell:echo LOS plan > /notes/plan.txt\n"
+            "BLOCK=button|Task|Mark Active|shell:taskstatus project-plan active\n"
+            "BLOCK=button|Task|Mark Done|shell:taskdone project-plan\n"
             "END\n"
             "END\n"
         );

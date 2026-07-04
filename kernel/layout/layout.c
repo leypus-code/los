@@ -71,7 +71,7 @@ static void layout_draw(void) {
         put(x, 24, ' ', footer);
     }
 
-    print_at(0, 24, "Tab Switch Block   Enter Activate   Q Exit", footer);
+    print_at(0, 24, "Tab Switch Block   Enter Action   Q Exit   task buttons update .task", footer);
     print_at(69, 24, LOS_VERSION, footer);
 }
 
@@ -221,6 +221,36 @@ static int execute_block_action(const char *action) {
     }
 
     if (action_starts_with(action, "theme ")) {
+        shell_run_command(action);
+        return 1;
+    }
+
+    if (action_starts_with(action, "taskstatus ")) {
+        shell_run_command(action);
+        return 1;
+    }
+
+    if (action_starts_with(action, "tasknext ")) {
+        shell_run_command(action);
+        return 1;
+    }
+
+    if (action_starts_with(action, "taskdone ")) {
+        shell_run_command(action);
+        return 1;
+    }
+
+    if (action_starts_with(action, "taskreopen ")) {
+        shell_run_command(action);
+        return 1;
+    }
+
+    if (action_starts_with(action, "taskopen ")) {
+        shell_run_command(action);
+        return 1;
+    }
+
+    if (action_starts_with(action, "tasklist")) {
         shell_run_command(action);
         return 1;
     }

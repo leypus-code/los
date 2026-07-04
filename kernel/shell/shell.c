@@ -130,7 +130,7 @@ static const char *completion_commands[] = {
     "themes", "theme",
     "workspaces", "open", "mkworkspace", "workspace", "workstatus",
     "wstemplate", "wstitle", "wsadd", "wsbutton", "wsnode", "wsend",
-    "run", "startup", "intent", "gentask", "tasks", "tasklist", "taskshow", "taskdone", "taskopen", "ai", "aistatus", "services", "service", "apps", "runapp", "handlers",
+    "run", "startup", "intent", "gentask", "tasks", "tasklist", "taskshow", "taskstatus", "tasknext", "taskreopen", "taskdone", "taskopen", "ai", "aistatus", "services", "service", "apps", "runapp", "handlers",
     "models", "modelstatus", "importmodel", "loadmodel",
     "packages", "install", "remove", "formats", "load",
     "mem", "pages", "paging", "kmalloc", "kfree", "allocpage", "freepage",
@@ -721,6 +721,9 @@ static const char *help_lines[] = {
     "  tasklist              List task summaries",
     "  taskshow <name>       Show task file",
     "  taskopen <name>       Open task workspace",
+    "  taskstatus <n> <s>    Set task status",
+    "  tasknext <n> \"text\" Add next action",
+    "  taskreopen <name>     Reopen task",
     "  taskdone <name>       Mark task done",
     "  ai <intent>           Send intent to AI/Intent Engine",
     "  aistatus              Show AI status",
@@ -1113,6 +1116,41 @@ static int task_extract_workspace(vfs_node_t *task, char *out, int max) {
     }
 
     return 0;
+}
+
+static int task_append_next(vfs_node_t *task, const char *next_text) {
+    static char updated[768];
+    int out = 0;
+
+    if (!task || task->type != VFS_FILE || !task->content || !next_text || !next_text[0]) {
+        return 0;
+    }
+
+    for (int i = 0; task->content[i] && out < 720; i++) {
+        updated[out++] = task->content[i];
+    }
+
+    if (out > 0 && updated[out - 1] != '\n' && out < 720) {
+        updated[out++] = '\n';
+    }
+
+    const char *prefix = "NEXT=";
+
+    for (int i = 0; prefix[i] && out < 720; i++) {
+        updated[out++] = prefix[i];
+    }
+
+    for (int i = 0; next_text[i] && out < 720; i++) {
+        updated[out++] = next_text[i];
+    }
+
+    if (out < 720) {
+        updated[out++] = '\n';
+    }
+
+    updated[out] = '\0';
+
+    return vfs_write_file(task, updated);
 }
 
 static int task_set_status(vfs_node_t *task, const char *new_status) {
@@ -1732,7 +1770,7 @@ static const char *command_lines[] = {
     "Themes: themes theme theme list theme next theme prev theme <name>",
     "Workspaces: workspaces open mkworkspace workspace workstatus wstemplate wstitle wsadd wsbutton wsnode wsend",
     "Scripts: run run -v startup",
-    "AI/Services: intent gentask tasks tasklist taskshow taskopen taskdone ai aistatus services service apps runapp handlers",
+    "AI/Services: intent gentask tasks tasklist taskshow taskopen taskstatus tasknext taskreopen taskdone ai aistatus services service apps runapp handlers",
     "Models/Packages: models modelstatus importmodel loadmodel packages install remove formats load",
     "Kernel/Debug: mem pages paging kmalloc kfree allocpage freepage ps newtask current schedule dmesg kbd panic",
     "Scrollback: scrollup scrolldown top bottom PageUp PageDown",
@@ -3064,6 +3102,121 @@ static void shell_execute(const char *command) {
             shell_ok("Task marked done");
         } else {
             shell_error("Task update failed");
+        }
+
+        return;
+
+    } else if (
+        command[0] == 't' &&
+        command[1] == 'a' &&
+        command[2] == 's' &&
+        command[3] == 'k' &&
+        command[4] == 's' &&
+        command[5] == 't' &&
+        command[6] == 'a' &&
+        command[7] == 't' &&
+        command[8] == 'u' &&
+        command[9] == 's' &&
+        command[10] == ' '
+    ) {
+        char *rest = (char *)(command + 11);
+        char name[64];
+        char status[32];
+
+        if (!shell_next_arg(&rest, name, 64) || !shell_next_arg(&rest, status, 32)) {
+            shell_error("Usage: taskstatus name open|active|blocked|done");
+            return;
+        }
+
+        vfs_node_t *task = task_resolve(name);
+
+        if (!task || task->type != VFS_FILE) {
+            shell_error("Task not found");
+            return;
+        }
+
+        if (task_set_status(task, status)) {
+            shell_ok("Task status updated");
+        } else {
+            shell_error("Task update failed");
+        }
+
+        return;
+
+    } else if (
+        command[0] == 't' &&
+        command[1] == 'a' &&
+        command[2] == 's' &&
+        command[3] == 'k' &&
+        command[4] == 'n' &&
+        command[5] == 'e' &&
+        command[6] == 'x' &&
+        command[7] == 't' &&
+        command[8] == ' '
+    ) {
+        char *rest = (char *)(command + 9);
+        char name[64];
+        char next_text[160];
+
+        if (!shell_next_arg(&rest, name, 64)) {
+            shell_error("Usage: tasknext name \"next action\"");
+            return;
+        }
+
+        shell_copy_unquoted_rest(rest, next_text, 160);
+
+        if (!next_text[0]) {
+            shell_error("Usage: tasknext name \"next action\"");
+            return;
+        }
+
+        vfs_node_t *task = task_resolve(name);
+
+        if (!task || task->type != VFS_FILE) {
+            shell_error("Task not found");
+            return;
+        }
+
+        if (task_append_next(task, next_text)) {
+            shell_ok("Task next action added");
+        } else {
+            shell_error("Task next update failed");
+        }
+
+        return;
+
+    } else if (
+        command[0] == 't' &&
+        command[1] == 'a' &&
+        command[2] == 's' &&
+        command[3] == 'k' &&
+        command[4] == 'r' &&
+        command[5] == 'e' &&
+        command[6] == 'o' &&
+        command[7] == 'p' &&
+        command[8] == 'e' &&
+        command[9] == 'n' &&
+        command[10] == ' '
+    ) {
+        char *rest = (char *)(command + 11);
+        char name[64];
+
+        if (!shell_next_arg(&rest, name, 64)) {
+            shell_error("Usage: taskreopen name");
+            return;
+        }
+
+        vfs_node_t *task = task_resolve(name);
+
+        if (!task || task->type != VFS_FILE) {
+            shell_error("Task not found");
+            return;
+        }
+
+        if (task_set_status(task, "open")) {
+            shell_ok("Task reopened");
+        } else {
+            shell_error("Task reopen failed");
         }
 
         return;

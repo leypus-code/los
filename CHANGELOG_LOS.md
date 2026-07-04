@@ -1,5 +1,18 @@
 # LOS Changelog
 
+## LOS v20.24
+- Workspace buttons can directly invoke task lifecycle commands
+- Generated task workspaces now include Mark Active and Mark Done buttons
+- Normal workspace templates also include task-aware action buttons
+- Layout footer updated to reflect task button behavior
+- Workspace UI can now update matching .task files directly
+
+## LOS v20.23
+- Added taskstatus command to set arbitrary task status
+- Added tasknext command to append NEXT actions to task files
+- Added taskreopen command to set task status back to open
+- Task files now support a basic lifecycle from shell commands
+
 ## LOS v20.22a
 - Fixed taskopen to open task workspaces through workspace service
 - taskopen now retries with basename when full /workspaces path fails

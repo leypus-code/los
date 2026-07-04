@@ -334,3 +334,41 @@ Task names may be given as:
     debug-build
     debug-build.task
     /workspaces/debug-build.task
+
+
+## Task lifecycle commands
+
+Task files support status changes and next actions.
+
+Examples:
+
+    tasklist
+    taskshow debug-build
+    taskstatus debug-build active
+    tasknext debug-build "Run make clean && make run"
+    taskdone debug-build
+    taskreopen debug-build
+
+Supported status values are free-form strings, but common values are:
+
+    open
+    active
+    blocked
+    done
+
+
+## Task-aware workspace buttons
+
+Workspace button actions can update task files directly.
+
+Examples of button actions:
+
+    shell:taskstatus debug-build active
+    shell:taskdone debug-build
+    shell:tasknext debug-build "Run make clean && make run"
+    shell:taskreopen debug-build
+
+Generated task workspaces include task lifecycle buttons such as:
+
+    Mark Active
+    Mark Done
