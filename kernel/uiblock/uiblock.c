@@ -105,6 +105,12 @@ void uiblock_draw(ui_block_t *b, int active) {
         print_at(ix, iy, "[ ", button_color);
         print_at(ix + 2, iy, b->content ? b->content : "OK", button_color);
         print_at(ix + 2 + 12, iy, " ]", button_color);
+
+        if (b->action && b->action[0]) {
+            print_at(ix, iy + 2, "action:", title_color);
+            print_wrapped(ix, iy + 3, iw, ih - 3, b->action, text_color);
+        }
+
         return;
     }
 

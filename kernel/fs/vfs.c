@@ -64,6 +64,17 @@ void vfs_initialize(void) {
                 "echo Welcome to LOS > /notes/welcome.txt\n"
             );
         }
+
+        vfs_node_t *build = vfs_create_file(scripts, "build.los");
+
+        if (build) {
+            vfs_write_file(build,
+                "# LOS build script stub\n"
+                "echo Build started > /notes/build.log\n"
+                "echo make clean && make run >> /notes/build.log\n"
+                "echo Build finished >> /notes/build.log\n"
+            );
+        }
     }
 
     if (workspaces) {

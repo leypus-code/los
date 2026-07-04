@@ -2,6 +2,7 @@
 #define LOS_SHELL_H
 
 void shell_initialize(void);
+void shell_run_command(const char *command);
 void shell_putchar(char c);
 void shell_handle_key(int key);
 void shell_resume_from_ui(void);

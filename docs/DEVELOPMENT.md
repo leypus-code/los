@@ -141,3 +141,32 @@ Available templates:
     system
     notes
     services
+
+
+## Workspace button actions
+
+Workspace button blocks can execute service actions or shell commands.
+
+Shell action format:
+
+    shell:<command>
+
+Examples:
+
+    shell:run /scripts/build.los
+    shell:echo TODO > /notes/todo.txt
+    shell:theme matrix
+    shell:nc
+
+Direct supported action prefixes:
+
+    run ...
+    open ...
+    nc
+    nano ...
+    edit ...
+    theme ...
+
+Example workspace block line:
+
+    BLOCK=button|Run Build|Build|shell:run /scripts/build.los

@@ -190,6 +190,41 @@ static int action_starts_with(const char *s, const char *prefix) {
 static int execute_block_action(const char *action) {
     if (!action || !action[0]) return 0;
 
+    if (action_starts_with(action, "shell:")) {
+        shell_run_command(action + 6);
+        return 1;
+    }
+
+    if (action_starts_with(action, "run ")) {
+        shell_run_command(action);
+        return 1;
+    }
+
+    if (action_starts_with(action, "open ")) {
+        shell_run_command(action);
+        return 1;
+    }
+
+    if (action_starts_with(action, "nc")) {
+        shell_run_command(action);
+        return 1;
+    }
+
+    if (action_starts_with(action, "nano ")) {
+        shell_run_command(action);
+        return 1;
+    }
+
+    if (action_starts_with(action, "edit ")) {
+        shell_run_command(action);
+        return 1;
+    }
+
+    if (action_starts_with(action, "theme ")) {
+        shell_run_command(action);
+        return 1;
+    }
+
     if (action_starts_with(action, "apps.open ")) {
         return service_call("apps", "open", action + 10);
     }

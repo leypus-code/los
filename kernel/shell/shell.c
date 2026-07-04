@@ -701,6 +701,7 @@ static const char *help_lines[] = {
     "  workspace <kind>      Open generated workspace kind",
     "  workstatus            Show workspace/layout status",
     "  wstemplate <t> <file> Create workspace from template",
+    "  workspace buttons     Actions can run shell:commands",
     "  wstitle <file> \"text\" Set workspace title",
     "  wsadd <file> ...      Add workspace block with quoted args",
     "  wsbutton <file> ...   Add workspace button with quoted args",
@@ -2850,6 +2851,14 @@ static void shell_execute(const char *command) {
         terminal_writestring("\n");
     }
 
+}
+
+void shell_run_command(const char *command) {
+    if (!command) {
+        return;
+    }
+
+    shell_execute(command);
 }
 
 void shell_initialize(void) {

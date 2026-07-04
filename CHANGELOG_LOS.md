@@ -1,5 +1,13 @@
 # LOS Changelog
 
+## LOS v20.17
+- Added public shell_run_command API
+- Workspace button actions can now execute shell commands using shell:<command>
+- Workspace buttons support run/open/nc/nano/edit/theme command actions
+- Button UI now displays the configured action
+- Updated workspace templates to use real shell actions
+- Added default /scripts/build.los script stub
+
 ## LOS v20.16
 - Added workspace_builder_template API
 - Added wstemplate command

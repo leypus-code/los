@@ -715,7 +715,7 @@ int workspace_builder_template(const char *kind, const char *name) {
             "NODE=row|horizontal|2\n"
             "BLOCK=terminal|Terminal|make clean && make run\\ngit status\\n\n"
             "BLOCK=logs|Build Logs|No build started\\nWaiting for command\n"
-            "BLOCK=button|Run Build|Build|fs.touch build.request\n"
+            "BLOCK=button|Run Build|Build|shell:run /scripts/build.los\n"
             "END\n"
             "END\n"
         );
@@ -736,7 +736,7 @@ int workspace_builder_template(const char *kind, const char *name) {
             "END\n"
             "NODE=row|horizontal|2\n"
             "BLOCK=logs|Event Log|Use dmesg for details\\nSystem initialized\n"
-            "BLOCK=button|Actions|Create Health Report|fs.touch health.report\n"
+            "BLOCK=button|Actions|Create Health Report|shell:echo System OK > /notes/health.report\n"
             "END\n"
             "END\n"
         );
@@ -756,7 +756,7 @@ int workspace_builder_template(const char *kind, const char *name) {
             "END\n"
             "NODE=row|horizontal|2\n"
             "BLOCK=ai|AI Summary|Summarize notes\\nFind todos\\nCreate plan\n"
-            "BLOCK=button|Actions|Create todo.txt|fs.touch /notes/todo.txt\n"
+            "BLOCK=button|Actions|Create todo.txt|shell:echo TODO > /notes/todo.txt\n"
             "END\n"
             "END\n"
         );
@@ -774,7 +774,7 @@ int workspace_builder_template(const char *kind, const char *name) {
             "BLOCK=status|Apps|editor\\nnorton\\nworkspace layout\n"
             "BLOCK=terminal|Service Calls|service workspace.list none\\nservice model.status none\n"
             "BLOCK=logs|Events|Use dmesg to inspect event log\n"
-            "BLOCK=button|Action|Create service check|fs.touch service.check\n"
+            "BLOCK=button|Action|Create service check|shell:echo Services OK > /notes/service.check\n"
         );
 
         eventlog_add("services workspace template created");
