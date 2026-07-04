@@ -1,5 +1,20 @@
 # LOS Changelog
 
+## LOS v20.15b
+- Fixed cat command for quoted paths
+- Added quoted path parsing for cd, nano, edit, and open
+- File commands now handle paths with spaces more consistently
+
+## LOS v20.15a
+- Fixed echo redirect parser for quoted target paths
+- Redirects now support paths with spaces, for example echo hello > "/projects/my app/hello.txt"
+
+## LOS v20.15
+- Added shell_next_arg parser with quoted string support
+- Added escaped quote support inside quoted arguments
+- Updated cp, mv, mkdir -p, rm -r, run, wsnode, wsend to use quoted args
+- Updated wstitle, wsadd, and wsbutton to support quoted workspace text
+
 ## LOS v20.14
 - Added /scripts directory to default VFS layout
 - Added default /scripts/startup.los boot script

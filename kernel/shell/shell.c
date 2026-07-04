@@ -676,8 +676,8 @@ static const char *help_lines[] = {
     "  rm <name>             Remove file or empty directory",
     "  rm -r <path>          Remove directory tree recursively",
     "  rename <old> <new>    Rename file or directory",
-    "  cp <src> <dst>        Copy file",
-    "  mv <src> <dst>        Move/rename file or directory",
+    "  cp <src> <dst>        Copy file, quoted paths supported",
+    "  mv <src> <dst>        Move/rename, quoted paths supported",
     "",
     "Editor / UI",
     "  nano <file>           Edit/create file",
@@ -700,9 +700,9 @@ static const char *help_lines[] = {
     "  mkworkspace <name>    Create workspace file",
     "  workspace <kind>      Open generated workspace kind",
     "  workstatus            Show workspace/layout status",
-    "  wstitle <file> <text> Set workspace title",
-    "  wsadd <file> ...      Add workspace block",
-    "  wsbutton <file> ...   Add workspace button",
+    "  wstitle <file> \"text\" Set workspace title",
+    "  wsadd <file> ...      Add workspace block with quoted args",
+    "  wsbutton <file> ...   Add workspace button with quoted args",
     "  wsnode <file> ...     Add workspace layout node",
     "  wsend <file>          End workspace layout node",
     "",
@@ -841,6 +841,83 @@ static int shell_next_word(char **cursor, char *out, int max) {
 
     *cursor = p;
     return 1;
+}
+
+
+static int shell_next_arg(char **cursor, char *out, int max) {
+    char *p = *cursor;
+    int len = 0;
+    int quoted = 0;
+
+    if (!cursor || !out || max <= 0) {
+        return 0;
+    }
+
+    while (*p == ' ') {
+        p++;
+    }
+
+    if (!*p) {
+        out[0] = '\0';
+        *cursor = p;
+        return 0;
+    }
+
+    if (*p == '"') {
+        quoted = 1;
+        p++;
+    }
+
+    while (*p && len < max - 1) {
+        if (quoted) {
+            if (*p == '"') {
+                p++;
+                break;
+            }
+
+            if (*p == '\\' && p[1] == '"') {
+                out[len++] = '"';
+                p += 2;
+                continue;
+            }
+
+            if (*p == '\\' && p[1] == '\\') {
+                out[len++] = '\\';
+                p += 2;
+                continue;
+            }
+
+            out[len++] = *p;
+            p++;
+        } else {
+            if (*p == ' ') {
+                break;
+            }
+
+            out[len++] = *p;
+            p++;
+        }
+    }
+
+    out[len] = '\0';
+
+    while (*p == ' ') {
+        p++;
+    }
+
+    *cursor = p;
+    return 1;
+}
+
+static const char *shell_rest_arg(char **cursor) {
+    char *p = *cursor;
+
+    while (*p == ' ') {
+        p++;
+    }
+
+    *cursor = p;
+    return p;
 }
 
 
@@ -1198,10 +1275,11 @@ static int shell_try_echo_redirect(const char *command) {
 
     shell_trim_copy(text, text, 512);
 
-    if (append) {
-        shell_trim_copy(command + pos + 2, path, 128);
-    } else {
-        shell_trim_copy(command + pos + 1, path, 128);
+    char *path_cursor = (char *)(command + pos + (append ? 2 : 1));
+
+    if (!shell_next_arg(&path_cursor, path, 128)) {
+        shell_error("redirect: missing file");
+        return 1;
     }
 
     if (!path[0]) {
@@ -1296,15 +1374,12 @@ static int shell_echo_redirect_inline(const char *command) {
     }
     text[ti] = '\0';
 
-    const char *path_start = command + redirect_pos + (append ? 2 : 1);
-    while (*path_start == ' ') path_start++;
+    char *path_cursor = (char *)(command + redirect_pos + (append ? 2 : 1));
 
-    int pi = 0;
-    while (path_start[pi] && path_start[pi] != ' ' && pi < 127) {
-        path[pi] = path_start[pi];
-        pi++;
+    if (!shell_next_arg(&path_cursor, path, 128)) {
+        shell_error("redirect: missing file");
+        return 1;
     }
-    path[pi] = '\0';
 
     if (!path[0]) {
         shell_error("redirect: missing file");
@@ -1811,7 +1886,15 @@ static void shell_execute(const char *command) {
         command[1] == 'd' &&
         command[2] == ' '
     ) {
-        vfs_node_t *target = vfs_resolve(shell_cwd, command + 3);
+        char *rest = (char *)(command + 3);
+        char path[96];
+
+        if (!shell_next_arg(&rest, path, 96)) {
+            shell_error("Usage: cd dir");
+            return;
+        }
+
+        vfs_node_t *target = vfs_resolve(shell_cwd, path);
 
         if (target && target->type == VFS_DIRECTORY) {
             shell_cwd = target;
@@ -1831,7 +1914,15 @@ static void shell_execute(const char *command) {
         command[2] == 't' &&
         command[3] == ' '
     ) {
-        vfs_node_t *file = vfs_resolve(shell_cwd, command + 4);
+        char *rest = (char *)(command + 4);
+        char path[96];
+
+        if (!shell_next_arg(&rest, path, 96)) {
+            shell_error("Usage: cat file");
+            return;
+        }
+
+        vfs_node_t *file = vfs_resolve(shell_cwd, path);
 
         if (!file || file->type != VFS_FILE) {
             shell_error("File not found");
@@ -1890,7 +1981,7 @@ static void shell_execute(const char *command) {
         char src[64];
         char dst[64];
 
-        if (!shell_next_word(&rest, src, 64) || !shell_next_word(&rest, dst, 64)) {
+        if (!shell_next_arg(&rest, src, 64) || !shell_next_arg(&rest, dst, 64)) {
             shell_error("Usage: cp source target");
             return;
         }
@@ -1907,7 +1998,7 @@ static void shell_execute(const char *command) {
         char src[64];
         char dst[64];
 
-        if (!shell_next_word(&rest, src, 64) || !shell_next_word(&rest, dst, 64)) {
+        if (!shell_next_arg(&rest, src, 64) || !shell_next_arg(&rest, dst, 64)) {
             shell_error("Usage: mv source target");
             return;
         }
@@ -1926,7 +2017,13 @@ static void shell_execute(const char *command) {
         command[7] == 'p' &&
         command[8] == ' '
     ) {
-        const char *path = command + 9;
+        char *rest = (char *)(command + 9);
+        char path[96];
+
+        if (!shell_next_arg(&rest, path, 96)) {
+            shell_error("Usage: mkdir -p path");
+            return;
+        }
 
         if (!shell_mkdir_p_path(path)) {
             shell_error("mkdir -p: failed");
@@ -1944,7 +2041,15 @@ static void shell_execute(const char *command) {
         command[4] == 'r' &&
         command[5] == ' '
     ) {
-        vfs_node_t *target = vfs_resolve(shell_cwd, command + 6);
+        char *rest = (char *)(command + 6);
+        char path[96];
+
+        if (!shell_next_arg(&rest, path, 96)) {
+            shell_error("Usage: rm -r path");
+            return;
+        }
+
+        vfs_node_t *target = vfs_resolve(shell_cwd, path);
 
         if (!target || !target->parent) {
             shell_error("rm -r: target not found");
@@ -2099,20 +2204,15 @@ static void shell_execute(const char *command) {
         command[7] == ' '
     ) {
         char *rest = (char *)(command + 8);
-        char *space = rest;
+        char name[64];
+        char title_arg[96];
 
-        while (*space && *space != ' ') space++;
-
-        if (!*space) {
-            kprintf("Usage: wstitle file.workspace Title\n");
+        if (!shell_next_arg(&rest, name, 64) || !shell_next_arg(&rest, title_arg, 96)) {
+            kprintf("Usage: wstitle file.workspace \"Title\"\n");
             return;
         }
 
-        *space = '\0';
-        const char *name = rest;
-        const char *title = space + 1;
-
-        if (workspace_builder_set_title(name, title)) {
+        if (workspace_builder_set_title(name, title_arg)) {
             kprintf(""); shell_ok("Workspace title set");
         } else {
             shell_error("Failed to set workspace title");
@@ -2129,39 +2229,35 @@ static void shell_execute(const char *command) {
         command[5] == ' '
     ) {
         char *rest = (char *)(command + 6);
-        char *p1 = rest;
+        char name[64];
+        char type[32];
+        char title_arg[96];
+        char content_arg[160];
 
-        while (*p1 && *p1 != ' ') p1++;
-        if (!*p1) {
-            kprintf("Usage: wsadd file.workspace type title content\n");
+        if (!shell_next_arg(&rest, name, 64) ||
+            !shell_next_arg(&rest, type, 32) ||
+            !shell_next_arg(&rest, title_arg, 96)) {
+            kprintf("Usage: wsadd file.workspace type \"Title\" \"Content\"\n");
             return;
         }
 
-        *p1 = '\0';
-        const char *name = rest;
+        if (!shell_next_arg(&rest, content_arg, 160)) {
+            const char *remaining = shell_rest_arg(&rest);
 
-        char *p2 = p1 + 1;
-        while (*p2 && *p2 != ' ') p2++;
-        if (!*p2) {
-            kprintf("Usage: wsadd file.workspace type title content\n");
-            return;
+            if (!remaining || !remaining[0]) {
+                kprintf("Usage: wsadd file.workspace type \"Title\" \"Content\"\n");
+                return;
+            }
+
+            int ci = 0;
+            while (remaining[ci] && ci < 159) {
+                content_arg[ci] = remaining[ci];
+                ci++;
+            }
+            content_arg[ci] = '\0';
         }
 
-        *p2 = '\0';
-        const char *type = p1 + 1;
-
-        char *p3 = p2 + 1;
-        while (*p3 && *p3 != ' ') p3++;
-        if (!*p3) {
-            kprintf("Usage: wsadd file.workspace type title content\n");
-            return;
-        }
-
-        *p3 = '\0';
-        const char *title = p2 + 1;
-        const char *content = p3 + 1;
-
-        if (workspace_builder_add_block(name, type, title, content)) {
+        if (workspace_builder_add_block(name, type, title_arg, content_arg)) {
             kprintf(""); shell_ok("Workspace block added");
         } else {
             shell_error("Failed to add workspace block");
@@ -2182,39 +2278,20 @@ static void shell_execute(const char *command) {
         command[8] == ' '
     ) {
         char *rest = (char *)(command + 9);
-        char *p1 = rest;
+        char name[64];
+        char title_arg[96];
+        char label[64];
+        char action[128];
 
-        while (*p1 && *p1 != ' ') p1++;
-        if (!*p1) {
-            kprintf("Usage: wsbutton file.workspace title label action\n");
+        if (!shell_next_arg(&rest, name, 64) ||
+            !shell_next_arg(&rest, title_arg, 96) ||
+            !shell_next_arg(&rest, label, 64) ||
+            !shell_next_arg(&rest, action, 128)) {
+            kprintf("Usage: wsbutton file.workspace \"Title\" \"Label\" \"action\"\n");
             return;
         }
 
-        *p1 = '\0';
-        const char *name = rest;
-
-        char *p2 = p1 + 1;
-        while (*p2 && *p2 != ' ') p2++;
-        if (!*p2) {
-            kprintf("Usage: wsbutton file.workspace title label action\n");
-            return;
-        }
-
-        *p2 = '\0';
-        const char *title = p1 + 1;
-
-        char *p3 = p2 + 1;
-        while (*p3 && *p3 != ' ') p3++;
-        if (!*p3) {
-            kprintf("Usage: wsbutton file.workspace title label action\n");
-            return;
-        }
-
-        *p3 = '\0';
-        const char *label = p2 + 1;
-        const char *action = p3 + 1;
-
-        if (workspace_builder_add_button(name, title, label, action)) {
+        if (workspace_builder_add_button(name, title_arg, label, action)) {
             kprintf(""); shell_ok("Workspace button added");
         } else {
             shell_error("Failed to add workspace button");
@@ -2231,7 +2308,15 @@ static void shell_execute(const char *command) {
         command[3] == 'n' &&
         command[4] == ' '
     ) {
-        const char *target = command + 5;
+        char *rest = (char *)(command + 5);
+        char target_arg[96];
+
+        if (!shell_next_arg(&rest, target_arg, 96)) {
+            shell_error("Usage: open file");
+            return;
+        }
+
+        const char *target = target_arg;
         const char *name = target;
 
         for (int i = 0; target[i]; i++) {
@@ -2262,14 +2347,14 @@ static void shell_execute(const char *command) {
 
         weight[0] = '\0';
 
-        if (!shell_next_word(&rest, file, 48) ||
-            !shell_next_word(&rest, kind, 24) ||
-            !shell_next_word(&rest, orientation, 24)) {
+        if (!shell_next_arg(&rest, file, 48) ||
+            !shell_next_arg(&rest, kind, 24) ||
+            !shell_next_arg(&rest, orientation, 24)) {
             shell_error("Usage: wsnode file.workspace root|row|column vertical|horizontal [weight]");
             return;
         }
 
-        shell_next_word(&rest, weight, 8);
+        shell_next_arg(&rest, weight, 8);
 
         if (workspace_builder_add_node(file, kind, orientation, weight)) {
             shell_ok("Workspace node added");
@@ -2290,7 +2375,7 @@ static void shell_execute(const char *command) {
         char *rest = (char *)(command + 6);
         char file[48];
 
-        if (!shell_next_word(&rest, file, 48)) {
+        if (!shell_next_arg(&rest, file, 48)) {
             shell_error("Usage: wsend file.workspace");
             return;
         }
@@ -2309,16 +2394,28 @@ static void shell_execute(const char *command) {
         command[2] == 'n' &&
         command[3] == ' '
     ) {
-        const char *path = command + 4;
+        char *rest = (char *)(command + 4);
+        char first_arg[96];
+        char path_arg[96];
+        const char *path = 0;
         int verbose = 0;
 
-        if (
-            path[0] == '-' &&
-            path[1] == 'v' &&
-            path[2] == ' '
-        ) {
+        if (!shell_next_arg(&rest, first_arg, 96)) {
+            shell_error("Usage: run [-v] file.los");
+            return;
+        }
+
+        if (strcmp(first_arg, "-v") == 0) {
             verbose = 1;
-            path = path + 3;
+
+            if (!shell_next_arg(&rest, path_arg, 96)) {
+                shell_error("Usage: run -v file.los");
+                return;
+            }
+
+            path = path_arg;
+        } else {
+            path = first_arg;
         }
 
         vfs_node_t *file = vfs_resolve(shell_cwd, path);

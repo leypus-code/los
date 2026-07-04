@@ -169,3 +169,18 @@ Example:
     Backspace        Delete before cursor
     Tab              Complete command/path/theme
     Enter            Execute command
+
+
+## Quoted arguments
+
+LOS shell supports quoted arguments for selected commands.
+
+Examples:
+
+    mkdir -p "/projects/my app"
+    echo hello > "/notes/hello.txt"
+    cp "/notes/hello.txt" "/notes/hello copy.txt"
+    mv "/notes/hello copy.txt" "/notes/final note.txt"
+    wstitle main.workspace "Main Workspace"
+    wsadd main.workspace panel "System Status" "Everything is OK"
+    wsbutton main.workspace "Actions" "Build" "run /scripts/build.los"

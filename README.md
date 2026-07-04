@@ -299,3 +299,18 @@ Important features at this point:
 - quiet/verbose script runner
 - nano-like editor with vertical scroll
 - workspace builder commands
+
+
+## Quoted arguments
+
+LOS shell supports quoted arguments for selected commands.
+
+Examples:
+
+    mkdir -p "/projects/my app"
+    echo hello > "/notes/hello.txt"
+    cp "/notes/hello.txt" "/notes/hello copy.txt"
+    mv "/notes/hello copy.txt" "/notes/final note.txt"
+    wstitle main.workspace "Main Workspace"
+    wsadd main.workspace panel "System Status" "Everything is OK"
+    wsbutton main.workspace "Actions" "Build" "run /scripts/build.los"
