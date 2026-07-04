@@ -2021,7 +2021,7 @@ static const char *command_lines[] = {
     "Themes: themes theme theme list theme next theme prev theme <name>",
     "Workspaces: workspaces open mkworkspace workspace workstatus wsblocks wsremove wsreplace wsaction wstemplate wstitle wsadd wsbutton wsnode wsend",
     "Scripts: run run -v startup",
-    "AI/Services: say talk model aipacket context aimode bridge transcript ask web ring chat ops intent gentask tasks tasklist taskshow tasklog taskopen taskstatus tasknext taskreopen taskdone ai aistatus services service apps runapp handlers",
+    "AI/Services: say talk uipatch uipatchhelp model aipacket context aimode bridge transcript ask web ring chat ops intent gentask tasks tasklist taskshow tasklog taskopen taskstatus tasknext taskreopen taskdone ai aistatus services service apps runapp handlers",
     "Models/Packages: models modelstatus importmodel loadmodel packages install remove formats load",
     "Kernel/Debug: mem pages paging kmalloc kfree allocpage freepage ps newtask current schedule dmesg kbd panic",
     "Scrollback: scrollup scrolldown top bottom PageUp PageDown",
@@ -3890,6 +3890,28 @@ static void shell_execute(const char *command) {
         return;
     } else if (strcmp(command, "transcript") == 0) {
         ai_bridge_show_transcript();
+        return;
+
+    } else if (strcmp(command, "uipatchhelp") == 0) {
+        ai_bridge_ui_patch_help();
+        return;
+
+    } else if (
+        command[0] == 'u' &&
+        command[1] == 'i' &&
+        command[2] == 'p' &&
+        command[3] == 'a' &&
+        command[4] == 't' &&
+        command[5] == 'c' &&
+        command[6] == 'h' &&
+        command[7] == ' '
+    ) {
+        const char *patch = command + 8;
+
+        if (!ai_bridge_apply_ui_patch(patch)) {
+            shell_error("UI patch failed");
+        }
+
         return;
 
     } else if (strcmp(command, "model") == 0) {

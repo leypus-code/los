@@ -16,5 +16,7 @@ void ai_bridge_model_status(void);
 void ai_bridge_model_set_local(void);
 void ai_bridge_model_set_host(void);
 void ai_bridge_packet_show(void);
+int ai_bridge_apply_ui_patch(const char *patch);
+void ai_bridge_ui_patch_help(void);
 
 #endif

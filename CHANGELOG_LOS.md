@@ -1,5 +1,17 @@
 # LOS Changelog
 
+## LOS v22.5a
+- Added visible OK confirmations for UI patch operations
+- replace_block patches on Chat Screen now reopen Chat Screen automatically
+- Improved manual testing feedback for AI UI Patch Contract
+
+## LOS v22.5
+- Added AI UI Patch Contract v1
+- Added ui:open, ui:template, ui:replace_block, and ui:add_chat_note operations
+- Host AI responses can now return ui: patches that mutate LOS workspaces
+- Added uipatch and uipatchhelp shell commands for manual testing
+- This prepares LOS for real AI-driven mutable UI without hardcoded phrase matching
+
 ## LOS v22.4
 - Added AI Provider Contract v1
 - Added model command to show/select local or host AI provider

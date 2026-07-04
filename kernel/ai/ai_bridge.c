@@ -558,6 +558,250 @@ void ai_bridge_model_set_host(void) {
     kprintf("[OK] AI provider set to host\n");
 }
 
+
+static void ai_bridge_split_put_char(int part, char ch,
+    char *a, int alen, int *apos,
+    char *b, int blen, int *bpos,
+    char *c, int clen, int *cpos,
+    char *d, int dlen, int *dpos,
+    char *e, int elen, int *epos
+) {
+    if (part == 0 && a && *apos < alen - 1) {
+        a[(*apos)++] = ch;
+        a[*apos] = '\0';
+        return;
+    }
+
+    if (part == 1 && b && *bpos < blen - 1) {
+        b[(*bpos)++] = ch;
+        b[*bpos] = '\0';
+        return;
+    }
+
+    if (part == 2 && c && *cpos < clen - 1) {
+        c[(*cpos)++] = ch;
+        c[*cpos] = '\0';
+        return;
+    }
+
+    if (part == 3 && d && *dpos < dlen - 1) {
+        d[(*dpos)++] = ch;
+        d[*dpos] = '\0';
+        return;
+    }
+
+    if (part == 4 && e && *epos < elen - 1) {
+        e[(*epos)++] = ch;
+        e[*epos] = '\0';
+        return;
+    }
+}
+
+static int ai_bridge_split5(const char *src,
+    char *a, int alen,
+    char *b, int blen,
+    char *c, int clen,
+    char *d, int dlen,
+    char *e, int elen
+) {
+    int part = 0;
+    int apos = 0;
+    int bpos = 0;
+    int cpos = 0;
+    int dpos = 0;
+    int epos = 0;
+
+    if (!src) {
+        return 0;
+    }
+
+    if (a && alen > 0) a[0] = '\0';
+    if (b && blen > 0) b[0] = '\0';
+    if (c && clen > 0) c[0] = '\0';
+    if (d && dlen > 0) d[0] = '\0';
+    if (e && elen > 0) e[0] = '\0';
+
+    for (int i = 0; src[i]; i++) {
+        char ch = src[i];
+
+        if (ch == ':' && part < 4) {
+            part++;
+            continue;
+        }
+
+        ai_bridge_split_put_char(
+            part,
+            ch,
+            a, alen, &apos,
+            b, blen, &bpos,
+            c, clen, &cpos,
+            d, dlen, &dpos,
+            e, elen, &epos
+        );
+    }
+
+    return part >= 4;
+}
+
+
+void ai_bridge_ui_patch_help(void) {
+    kprintf("AI UI Patch Contract v1\n");
+    kprintf("ui:open:<workspace>\n");
+    kprintf("ui:template:<kind>:<workspace>\n");
+    kprintf("ui:replace_block:<workspace>:<old_title>:<kind>:<new_title>:<content>\n");
+    kprintf("ui:add_chat_note:<title>:<content>\n");
+    kprintf("Examples:\n");
+    kprintf("ui:open:/workspaces/chat.workspace\n");
+    kprintf("ui:template:chat:/workspaces/chat.workspace\n");
+    kprintf("ui:add_chat_note:Idea:Build AI-native OS\n");
+}
+
+int ai_bridge_apply_ui_patch(const char *patch) {
+    if (!patch || !patch[0]) {
+        kprintf("[ERR] Empty UI patch\n");
+        return 0;
+    }
+
+    if (!ai_bridge_starts_with(patch, "ui:")) {
+        kprintf("[ERR] Not a UI patch\n");
+        return 0;
+    }
+
+    patch += 3;
+
+    if (ai_bridge_starts_with(patch, "open:")) {
+        const char *workspace = patch + 5;
+
+        if (!workspace_builder_open(workspace)) {
+            kprintf("[ERR] UI patch open failed\n");
+            return 0;
+        }
+
+        kprintf("[OK] UI patch open applied\n");
+        ai_bridge_context_set_workspace(workspace);
+        ring_log_operation("ui patch: open workspace");
+        return 1;
+    }
+
+    if (ai_bridge_starts_with(patch, "template:")) {
+        char kind[64];
+        char workspace[128];
+        int i = 9;
+        int p = 0;
+
+        kind[0] = '\0';
+        workspace[0] = '\0';
+
+        while (patch[i] && patch[i] != ':' && p < 63) {
+            kind[p++] = patch[i++];
+        }
+        kind[p] = '\0';
+
+        if (patch[i] == ':') i++;
+
+        p = 0;
+        while (patch[i] && p < 127) {
+            workspace[p++] = patch[i++];
+        }
+        workspace[p] = '\0';
+
+        if (!kind[0] || !workspace[0]) {
+            kprintf("[ERR] UI template patch malformed\n");
+            return 0;
+        }
+
+        char arg[192];
+        arg[0] = '\0';
+        ai_bridge_append(arg, kind, 192);
+        ai_bridge_append(arg, " ", 192);
+        ai_bridge_append(arg, workspace, 192);
+
+        service_call("workspace", "template", arg);
+        kprintf("[OK] UI patch template applied\n");
+        ring_log_operation("ui patch: template workspace");
+        return 1;
+    }
+
+    if (ai_bridge_starts_with(patch, "add_chat_note:")) {
+        const char *rest = patch + 14;
+        char title[64];
+        char content[384];
+        int i = 0;
+        int p = 0;
+
+        title[0] = '\0';
+        content[0] = '\0';
+
+        while (rest[i] && rest[i] != ':' && p < 63) {
+            title[p++] = rest[i++];
+        }
+        title[p] = '\0';
+
+        if (rest[i] == ':') i++;
+
+        p = 0;
+        while (rest[i] && p < 383) {
+            char ch = rest[i++];
+            if (ch == '|') ch = '/';
+            content[p++] = ch;
+        }
+        content[p] = '\0';
+
+        if (!title[0]) {
+            ai_bridge_copy_safe(title, "AI Note", 64);
+        }
+
+        if (!workspace_builder_add_block(
+                "/workspaces/chat.workspace",
+                "text",
+                title,
+                content
+            )) {
+            kprintf("[ERR] UI patch add_chat_note failed\n");
+            return 0;
+        }
+
+        kprintf("[OK] UI patch add_chat_note applied\n");
+        ring_log_operation("ui patch: add chat note");
+        ai_bridge_context_set_workspace("Chat Screen");
+        intent_handle("chat screen");
+        return 1;
+    }
+
+    if (ai_bridge_starts_with(patch, "replace_block:")) {
+        const char *rest = patch + 14;
+        char workspace[128];
+        char old_title[128];
+        char kind[64];
+        char new_title[128];
+        char content[384];
+
+        if (!ai_bridge_split5(rest, workspace, 128, old_title, 128, kind, 64, new_title, 128, content, 384)) {
+            kprintf("[ERR] UI replace_block patch malformed\n");
+            return 0;
+        }
+
+        if (!workspace_builder_replace_block(workspace, old_title, kind, new_title, content)) {
+            kprintf("[ERR] UI replace_block failed\n");
+            return 0;
+        }
+
+        kprintf("[OK] UI patch replace_block applied\n");
+        ring_log_operation("ui patch: replace block");
+        ai_bridge_context_set_workspace(workspace);
+
+        if (strcmp(workspace, "/workspaces/chat.workspace") == 0) {
+            intent_handle("chat screen");
+        }
+
+        return 1;
+    }
+
+    kprintf("[ERR] Unknown UI patch op\n");
+    return 0;
+}
+
+
 void ai_bridge_packet_show(void) {
     kprintf("AI Request Packet v1\n");
     kprintf("workspace=%s\n", ai_context_workspace);
@@ -823,6 +1067,12 @@ int ai_bridge_execute(const char *prompt) {
     if (ai_bridge_starts_with(answer, "web:")) {
         ring_log_operation("model: selected web tool");
         return ai_bridge_web(answer + 4);
+    }
+
+    if (ai_bridge_starts_with(answer, "ui:")) {
+        ring_log_operation("model: selected ui patch");
+        ai_bridge_update_chat_widget(prompt, answer);
+        return ai_bridge_apply_ui_patch(answer);
     }
 
     ai_bridge_update_chat_widget(prompt, answer);
