@@ -323,10 +323,208 @@ static int intent_home_engine_panel(void) {
 }
 
 
+
+static int intent_home_reset(void) {
+    service_call("workspace", "template", "home /workspaces/home.workspace");
+    ring_log_operation("screen: reset home");
+    return intent_open_home_after_mutation();
+}
+
+static void intent_replace_any_block(const char *a, const char *b, const char *c, const char *type, const char *title, const char *content) {
+    if (a && workspace_builder_replace_block("/workspaces/home.workspace", a, type, title, content)) return;
+    if (b && workspace_builder_replace_block("/workspaces/home.workspace", b, type, title, content)) return;
+    if (c && workspace_builder_replace_block("/workspaces/home.workspace", c, type, title, content)) return;
+}
+
+static void intent_replace_any_button(const char *a, const char *b, const char *c, const char *title, const char *label, const char *action) {
+    if (a && workspace_builder_replace_block("/workspaces/home.workspace", a, "button", title, label)) {
+        workspace_builder_set_block_action("/workspaces/home.workspace", title, action);
+        return;
+    }
+
+    if (b && workspace_builder_replace_block("/workspaces/home.workspace", b, "button", title, label)) {
+        workspace_builder_set_block_action("/workspaces/home.workspace", title, action);
+        return;
+    }
+
+    if (c && workspace_builder_replace_block("/workspaces/home.workspace", c, "button", title, label)) {
+        workspace_builder_set_block_action("/workspaces/home.workspace", title, action);
+        return;
+    }
+}
+
+static int intent_home_dashboard_mode(void) {
+    intent_ensure_home_workspace();
+
+    intent_replace_any_block(
+        "Command Center",
+        "Weather",
+        "Code Workspace",
+        "status",
+        "Weather",
+        "Weather widget\\nLocation: auto\\nTemperature: pending\\nCondition: pending"
+    );
+
+    intent_replace_any_block(
+        "Live Tasks",
+        "Checklist",
+        "Project Files",
+        "list",
+        "Active Work",
+        "LOS MVP\\nAI Ring\\nMutable Home\\nWorkspace Modes"
+    );
+
+    intent_replace_any_block(
+        "Workspace Engine",
+        "System Logs",
+        "Build Status",
+        "logs",
+        "System Logs",
+        "AI ring: docked\\nWorkspace: dashboard\\nMutation: complete\\nStatus: ready"
+    );
+
+    intent_replace_any_button(
+        "Project Plan",
+        "Task List",
+        "Run Build",
+        "Debug Workspace",
+        "Open Debug Workspace",
+        "shell:chat \"debug build error\""
+    );
+
+    ring_log_operation("screen: dashboard mode");
+    eventlog_add("ai screen mode dashboard");
+    return intent_open_home_after_mutation();
+}
+
+static int intent_home_coding_mode(void) {
+    intent_ensure_home_workspace();
+
+    intent_replace_any_block(
+        "Command Center",
+        "Weather",
+        "Code Workspace",
+        "code",
+        "Code Workspace",
+        "Project: LOS\\nMode: coding\\nNext: inspect build output\\nCommand: make clean && make run"
+    );
+
+    intent_replace_any_block(
+        "Live Tasks",
+        "Checklist",
+        "Active Work",
+        "list",
+        "Project Files",
+        "kernel/shell/shell.c\\nkernel/ai/ring.c\\nkernel/intent/intent.c\\nkernel/workspace/workspace_builder.c"
+    );
+
+    intent_replace_any_block(
+        "Workspace Engine",
+        "System Logs",
+        "Build Status",
+        "status",
+        "Build Status",
+        "Compiler: clang i386-elf\\nTarget: bootable ISO\\nQEMU: ready"
+    );
+
+    intent_replace_any_button(
+        "Project Plan",
+        "Task List",
+        "Debug Workspace",
+        "Run Build",
+        "Run Build",
+        "shell:echo \"Run make clean && make run on host\""
+    );
+
+    ring_log_operation("screen: coding mode");
+    eventlog_add("ai screen mode coding");
+    return intent_open_home_after_mutation();
+}
+
+static int intent_home_blank_canvas(void) {
+    intent_ensure_home_workspace();
+
+    intent_replace_any_block(
+        "Command Center",
+        "Weather",
+        "Code Workspace",
+        "text",
+        "Blank Canvas",
+        "Ask anything.\\nLOS will generate the workspace."
+    );
+
+    intent_replace_any_block(
+        "Live Tasks",
+        "Checklist",
+        "Active Work",
+        "text",
+        "Empty Area",
+        "No widgets yet.\\nUse chat to create the screen."
+    );
+
+    intent_replace_any_block(
+        "Workspace Engine",
+        "System Logs",
+        "Build Status",
+        "status",
+        "Workspace Engine",
+        "Waiting for command\\nRing: idle\\nWorkspace: blank"
+    );
+
+    ring_log_operation("screen: blank canvas");
+    eventlog_add("ai screen mode blank canvas");
+    return intent_open_home_after_mutation();
+}
+
+
 int intent_handle(const char *text) {
     if (!text || !text[0]) {
         kprintf("Intent: empty\n");
         return 0;
+    }
+
+    if (strcmp(text, "build dashboard") == 0) {
+        return intent_home_dashboard_mode();
+    }
+
+    if (strcmp(text, "dashboard") == 0) {
+        return intent_home_dashboard_mode();
+    }
+
+    if (strcmp(text, "dashboard mode") == 0) {
+        return intent_home_dashboard_mode();
+    }
+
+    if (strcmp(text, "make dashboard") == 0) {
+        return intent_home_dashboard_mode();
+    }
+
+    if (strcmp(text, "coding mode") == 0) {
+        return intent_home_coding_mode();
+    }
+
+    if (strcmp(text, "code mode") == 0) {
+        return intent_home_coding_mode();
+    }
+
+    if (strcmp(text, "developer mode") == 0) {
+        return intent_home_coding_mode();
+    }
+
+    if (strcmp(text, "blank canvas") == 0) {
+        return intent_home_blank_canvas();
+    }
+
+    if (strcmp(text, "empty screen") == 0) {
+        return intent_home_blank_canvas();
+    }
+
+    if (strcmp(text, "reset home") == 0) {
+        return intent_home_reset();
+    }
+
+    if (strcmp(text, "reset screen") == 0) {
+        return intent_home_reset();
     }
 
     if (strcmp(text, "add weather") == 0) {

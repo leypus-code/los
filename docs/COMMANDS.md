@@ -536,3 +536,19 @@ Examples of logged operations:
     mutation: added checklist
 
 Home includes an `AI Operations` block that reflects recent AI activity.
+
+
+## AI screen modes
+
+LOS can mutate the Home workspace into different working modes.
+
+Examples:
+
+    chat "build dashboard"
+    chat "dashboard"
+    chat "coding mode"
+    chat "developer mode"
+    chat "blank canvas"
+    chat "reset home"
+
+These commands mutate multiple widgets at once and represent the MVP version of AI reconfiguring the whole screen.

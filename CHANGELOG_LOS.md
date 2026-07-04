@@ -1,5 +1,13 @@
 # LOS Changelog
 
+## LOS v20.32
+- Added AI screen modes for Home workspace
+- Added dashboard mode through chat build dashboard / dashboard
+- Added coding mode through chat coding mode / developer mode
+- Added blank canvas mode through chat blank canvas / empty screen
+- Added reset home / reset screen commands
+- Screen modes mutate multiple Home widgets at once
+
 ## LOS v20.31a
 - Fixed missing ops shell command handler
 - Ensured ops command is available through shell and ring API

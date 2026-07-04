@@ -940,7 +940,7 @@ int workspace_builder_template(const char *kind, const char *name) {
 
             "NODE=row|horizontal|3\n"
             "BLOCK=ai|AI Ring|State machine:\\nidle -> chat -> thinking -> docked\\nUse: ring status\\nUse: chat \"debug build error\"\n"
-            "BLOCK=text|Command Center|Examples:\\nchat \"debug build error\"\\nchat \"add weather\"\\nchat \"add checklist\"\\nchat \"add logs panel\"\n"
+            "BLOCK=text|Command Center|Examples:\\nchat \"build dashboard\"\\nchat \"coding mode\"\\nchat \"blank canvas\"\\nchat \"reset home\"\n"
             "BLOCK=status|Workspace Engine|Mutable workspace documents: ready\\nTask files: ready\\nIntent engine: ready\n"
             "END\n"
 
