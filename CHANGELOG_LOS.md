@@ -1,5 +1,12 @@
 # LOS Changelog
 
+## LOS v20.20
+- Added generated task workspace templates
+- Added debug, overview, writing, and planning generated workspace kinds
+- Added intent aliases for debug build error, system overview, write notes, and plan project
+- Added gentask shell command
+- Moved closer to task-driven generated UI flow
+
 ## LOS v20.19b
 - Fixed intent command to pass the full phrase instead of a single argument
 - Fixed ai command intent pre-pass to use the full phrase

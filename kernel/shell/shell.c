@@ -130,7 +130,7 @@ static const char *completion_commands[] = {
     "themes", "theme",
     "workspaces", "open", "mkworkspace", "workspace", "workstatus",
     "wstemplate", "wstitle", "wsadd", "wsbutton", "wsnode", "wsend",
-    "run", "startup", "intent", "ai", "aistatus", "services", "service", "apps", "runapp", "handlers",
+    "run", "startup", "intent", "gentask", "ai", "aistatus", "services", "service", "apps", "runapp", "handlers",
     "models", "modelstatus", "importmodel", "loadmodel",
     "packages", "install", "remove", "formats", "load",
     "mem", "pages", "paging", "kmalloc", "kfree", "allocpage", "freepage",
@@ -716,6 +716,7 @@ static const char *help_lines[] = {
     "",
     "AI / Services / Apps",
     "  intent \"text\"       Run rule-based intent",
+    "  gentask <kind>        Generate task workspace",
     "  ai <intent>           Send intent to AI/Intent Engine",
     "  aistatus              Show AI status",
     "  services              List services",
@@ -1473,7 +1474,7 @@ static const char *command_lines[] = {
     "Themes: themes theme theme list theme next theme prev theme <name>",
     "Workspaces: workspaces open mkworkspace workspace workstatus wstemplate wstitle wsadd wsbutton wsnode wsend",
     "Scripts: run run -v startup",
-    "AI/Services: intent ai aistatus services service apps runapp handlers",
+    "AI/Services: intent gentask ai aistatus services service apps runapp handlers",
     "Models/Packages: models modelstatus importmodel loadmodel packages install remove formats load",
     "Kernel/Debug: mem pages paging kmalloc kfree allocpage freepage ps newtask current schedule dmesg kbd panic",
     "Scrollback: scrollup scrolldown top bottom PageUp PageDown",
@@ -2717,6 +2718,47 @@ static void shell_execute(const char *command) {
         } else {
             kprintf("Model not found: %s\n", command + 10);
         }
+    } else if (
+        command[0] == 'g' &&
+        command[1] == 'e' &&
+        command[2] == 'n' &&
+        command[3] == 't' &&
+        command[4] == 'a' &&
+        command[5] == 's' &&
+        command[6] == 'k' &&
+        command[7] == ' '
+    ) {
+        char *rest = (char *)(command + 8);
+        char kind[32];
+
+        if (!shell_next_arg(&rest, kind, 32)) {
+            shell_error("Usage: gentask debug|overview|writing|planning");
+            return;
+        }
+
+        if (strcmp(kind, "debug") == 0) {
+            intent_handle("debug build error");
+            return;
+        }
+
+        if (strcmp(kind, "overview") == 0) {
+            intent_handle("system overview");
+            return;
+        }
+
+        if (strcmp(kind, "writing") == 0) {
+            intent_handle("write notes");
+            return;
+        }
+
+        if (strcmp(kind, "planning") == 0) {
+            intent_handle("plan project");
+            return;
+        }
+
+        shell_error("Unknown generated task");
+        return;
+
     } else if (
         command[0] == 'i' &&
         command[1] == 'n' &&

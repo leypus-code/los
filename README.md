@@ -393,3 +393,24 @@ Examples:
 The ai command also tries intent handling first:
 
     ai "create and open coding workspace"
+
+
+## Generated task workspaces
+
+LOS can create task-specific workspace screens from intent phrases.
+
+Examples:
+
+    intent "debug build error"
+    intent "system overview"
+    intent "write notes"
+    intent "plan project"
+
+Shortcut command:
+
+    gentask debug
+    gentask overview
+    gentask writing
+    gentask planning
+
+These commands generate workspace files under /workspaces and open them as task screens.

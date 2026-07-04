@@ -178,15 +178,43 @@ int intent_handle(const char *text) {
     }
 
     if (strcmp(text, "debug build error") == 0) {
-        return intent_workspace_template("coding", "/workspaces/debug-build.workspace", 1);
+        return intent_workspace_template("debug", "/workspaces/debug-build.workspace", 1);
     }
 
     if (strcmp(text, "debug build") == 0) {
-        return intent_workspace_template("coding", "/workspaces/debug-build.workspace", 1);
+        return intent_workspace_template("debug", "/workspaces/debug-build.workspace", 1);
     }
 
     if (strcmp(text, "fix build error") == 0) {
-        return intent_workspace_template("coding", "/workspaces/debug-build.workspace", 1);
+        return intent_workspace_template("debug", "/workspaces/debug-build.workspace", 1);
+    }
+
+    if (strcmp(text, "system overview") == 0) {
+        return intent_workspace_template("overview", "/workspaces/system-overview.workspace", 1);
+    }
+
+    if (strcmp(text, "overview") == 0) {
+        return intent_workspace_template("overview", "/workspaces/system-overview.workspace", 1);
+    }
+
+    if (strcmp(text, "write notes") == 0) {
+        return intent_workspace_template("writing", "/workspaces/writing.workspace", 1);
+    }
+
+    if (strcmp(text, "notes workspace") == 0) {
+        return intent_workspace_template("writing", "/workspaces/writing.workspace", 1);
+    }
+
+    if (strcmp(text, "plan project") == 0) {
+        return intent_workspace_template("planning", "/workspaces/project-plan.workspace", 1);
+    }
+
+    if (strcmp(text, "project plan") == 0) {
+        return intent_workspace_template("planning", "/workspaces/project-plan.workspace", 1);
+    }
+
+    if (strcmp(text, "service overview") == 0) {
+        return intent_workspace_template("services", "/workspaces/services.workspace", 1);
     }
 
     if (intent_workspace_kind(text, "coding", "/workspaces/coding.workspace")) return 1;

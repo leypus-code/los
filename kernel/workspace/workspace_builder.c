@@ -800,6 +800,90 @@ int workspace_builder_template(const char *kind, const char *name) {
         return 1;
     }
 
+    if (strcmp(kind, "debug") == 0) {
+        vfs_write_file(file,
+            "WORKSPACE\n"
+            "TITLE=Debug Build Workspace\n"
+            "NODE=root|vertical|1\n"
+            "NODE=row|horizontal|3\n"
+            "BLOCK=status|Problem|Build error detected\nInspect compiler output\nCheck recent patch\n"
+            "BLOCK=code|Likely Files|kernel/shell/shell.c\nkernel/intent/intent.c\nkernel/workspace/workspace_builder.c\n"
+            "BLOCK=ai|AI Debug Plan|1. Read error\n2. Locate symbol\n3. Patch smallest surface\n4. Rebuild\n"
+            "END\n"
+            "NODE=row|horizontal|2\n"
+            "BLOCK=terminal|Build Commands|make clean\nmake run\ngit status\n"
+            "BLOCK=logs|Build Log|No captured log yet\nUse /notes/build.log for script output\n"
+            "BLOCK=button|Actions|Run Build|shell:run /scripts/build.los\n"
+            "END\n"
+            "END\n"
+        );
+
+        eventlog_add("debug task workspace generated");
+        return 1;
+    }
+
+    if (strcmp(kind, "overview") == 0) {
+        vfs_write_file(file,
+            "WORKSPACE\n"
+            "TITLE=System Overview Workspace\n"
+            "NODE=root|vertical|1\n"
+            "NODE=row|horizontal|3\n"
+            "BLOCK=status|Kernel|LOS online\nFreestanding i386 kernel\nGRUB/QEMU boot\n"
+            "BLOCK=status|Subsystems|VFS\nShell\nServices\nIntent\nWorkspace UI\n"
+            "BLOCK=ai|System Summary|Show current architecture\nSuggest next subsystem\nPrepare roadmap\n"
+            "END\n"
+            "NODE=row|horizontal|2\n"
+            "BLOCK=logs|Diagnostics|Use dmesg\nUse services\nUse workstatus\n"
+            "BLOCK=button|Actions|Show Services|shell:services\n"
+            "END\n"
+            "END\n"
+        );
+
+        eventlog_add("overview task workspace generated");
+        return 1;
+    }
+
+    if (strcmp(kind, "writing") == 0) {
+        vfs_write_file(file,
+            "WORKSPACE\n"
+            "TITLE=Writing / Notes Workspace\n"
+            "NODE=root|vertical|1\n"
+            "NODE=row|horizontal|2\n"
+            "BLOCK=list|Notes|/notes/welcome.txt\n/notes/todo.txt\n/notes/ideas.txt\n/notes/draft.txt\n"
+            "BLOCK=text|Draft|Use nano /notes/draft.txt\nOr create notes from buttons\n"
+            "END\n"
+            "NODE=row|horizontal|2\n"
+            "BLOCK=ai|Writing Assistant|Summarize\nRewrite\nExtract todos\nPlan next steps\n"
+            "BLOCK=button|Actions|Create Draft|shell:echo Draft started > /notes/draft.txt\n"
+            "END\n"
+            "END\n"
+        );
+
+        eventlog_add("writing task workspace generated");
+        return 1;
+    }
+
+    if (strcmp(kind, "planning") == 0) {
+        vfs_write_file(file,
+            "WORKSPACE\n"
+            "TITLE=Project Planning Workspace\n"
+            "NODE=root|vertical|1\n"
+            "NODE=row|horizontal|3\n"
+            "BLOCK=status|Goal|Define task\nSplit into milestones\nTrack progress\n"
+            "BLOCK=list|Milestones|v20.20 generated workspaces\nv20.21 command registry\nv20.22 task files\n"
+            "BLOCK=ai|Planner|Find next smallest patch\nAvoid big rewrites\nKeep build green\n"
+            "END\n"
+            "NODE=row|horizontal|2\n"
+            "BLOCK=text|Notes|Use /notes/plan.txt\nUse startup.los for boot tasks\n"
+            "BLOCK=button|Actions|Create Plan File|shell:echo LOS plan > /notes/plan.txt\n"
+            "END\n"
+            "END\n"
+        );
+
+        eventlog_add("planning task workspace generated");
+        return 1;
+    }
+
     vfs_write_file(file,
         "WORKSPACE\n"
         "TITLE=Custom Template Workspace\n"
