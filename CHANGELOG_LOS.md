@@ -1,5 +1,29 @@
 # LOS Changelog
 
+## LOS v20.26d
+- Increased shell history from 8 to 32 commands
+- Added history command to inspect recent shell commands
+- Useful for debugging long workspace mutation commands
+
+## LOS v20.26c
+- Increased shell command buffer from 128 to 512 characters
+- Increased workspace mutation argument buffers
+- Increased workspace block content parsing limits
+- Increased workspace text pool to support larger mutable workspace documents
+
+## LOS v20.26b
+- Added horizontal shell input scrolling for long commands
+- Long commands now remain editable instead of disappearing past the right edge
+- Added < and > visual markers when input is horizontally scrolled
+
+## LOS v20.26
+- Added mutable workspace document commands
+- Added wsblocks to list workspace blocks
+- Added wsremove to remove a block by title
+- Added wsreplace to replace a block by title
+- Added wsaction to update block actions
+- Workspace documents can now be patched after generation
+
 ## LOS v20.25
 - Added task event logging to .task files
 - New task files now include EVENT=created

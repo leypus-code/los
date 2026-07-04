@@ -32,18 +32,19 @@
 #include "../include/pmm.h"
 #include "../include/paging.h"
 
-#define SHELL_BUFFER_SIZE 128
+#define SHELL_BUFFER_SIZE 512
 
 static char input_buffer[SHELL_BUFFER_SIZE];
 static int input_length = 0;
 static int input_cursor = 0;
+static int input_scroll = 0;
 static int input_start_x = 0;
 static int input_start_y = 0;
 
 #define SHELL_REDIRECT_BUFFER_SIZE 4096
 static char redirect_buffer[SHELL_REDIRECT_BUFFER_SIZE];
 
-#define HISTORY_SIZE 8
+#define HISTORY_SIZE 32
 static char command_history[HISTORY_SIZE][SHELL_BUFFER_SIZE];
 static int history_count = 0;
 static int history_view = -1;
@@ -121,15 +122,36 @@ static void shell_save_history(const char *cmd) {
 }
 
 
+static void shell_print_history(void) {
+    int start = history_count - HISTORY_SIZE;
+
+    if (start < 0) {
+        start = 0;
+    }
+
+    if (history_count == 0) {
+        kprintf("History empty\n");
+        return;
+    }
+
+    kprintf("Command history:\n");
+
+    for (int i = start; i < history_count; i++) {
+        int slot = i % HISTORY_SIZE;
+        kprintf("  %u  %s\n", (uint32_t)(i + 1), command_history[slot]);
+    }
+}
+
+
 
 static const char *completion_commands[] = {
-    "help", "commands", "clear", "version", "uptime", "time", "date", "clock",
+    "help", "commands", "history", "clear", "version", "uptime", "time", "date", "clock",
     "echo", "pwd", "uname", "whoami", "hostname", "true", "false",
     "ls", "tree", "cd", "cat", "write", "mkdir", "touch", "rm", "rename", "cp", "mv",
     "nano", "edit", "nc", "wm", "currentapp",
     "themes", "theme",
     "workspaces", "open", "mkworkspace", "workspace", "workstatus",
-    "wstemplate", "wstitle", "wsadd", "wsbutton", "wsnode", "wsend",
+    "wsblocks", "wsremove", "wsreplace", "wsaction", "wstemplate", "wstitle", "wsadd", "wsbutton", "wsnode", "wsend",
     "run", "startup", "intent", "gentask", "tasks", "tasklist", "taskshow", "tasklog", "taskstatus", "tasknext", "taskreopen", "taskdone", "taskopen", "ai", "aistatus", "services", "service", "apps", "runapp", "handlers",
     "models", "modelstatus", "importmodel", "loadmodel",
     "packages", "install", "remove", "formats", "load",
@@ -475,25 +497,65 @@ static void shell_handle_tab(void) {
 
 static void shell_redraw_input(void) {
     uint8_t color = theme_color_normal();
+    int visible_width = 80 - input_start_x;
+    int visible_cursor = 0;
+
+    if (visible_width < 1) {
+        visible_width = 1;
+    }
+
+    if (input_cursor < input_scroll) {
+        input_scroll = input_cursor;
+    }
+
+    if (input_cursor >= input_scroll + visible_width) {
+        input_scroll = input_cursor - visible_width + 1;
+    }
+
+    if (input_scroll < 0) {
+        input_scroll = 0;
+    }
 
     for (int x = input_start_x; x < 80; x++) {
         terminal_putentry_at(' ', color, x, input_start_y);
     }
 
-    for (int i = 0; i < input_length && input_start_x + i < 80; i++) {
-        terminal_putentry_at(input_buffer[i], color, input_start_x + i, input_start_y);
+    for (int i = 0; i < visible_width; i++) {
+        int src = input_scroll + i;
+
+        if (src >= input_length) {
+            break;
+        }
+
+        terminal_putentry_at(input_buffer[src], color, input_start_x + i, input_start_y);
     }
 
-    int cx = input_start_x + input_cursor;
-    if (cx > 79) cx = 79;
+    if (input_scroll > 0 && input_start_x < 80) {
+        terminal_putentry_at('<', theme_color_info(), input_start_x, input_start_y);
+    }
 
-    terminal_move_cursor(cx, input_start_y);
+    if (input_scroll + visible_width < input_length && 79 < 80) {
+        terminal_putentry_at('>', theme_color_info(), 79, input_start_y);
+    }
+
+    visible_cursor = input_cursor - input_scroll;
+
+    if (visible_cursor < 0) {
+        visible_cursor = 0;
+    }
+
+    if (visible_cursor >= visible_width) {
+        visible_cursor = visible_width - 1;
+    }
+
+    terminal_move_cursor(input_start_x + visible_cursor, input_start_y);
     theme_set_normal();
 }
 
 static void shell_clear_current_input(void) {
     input_length = 0;
     input_cursor = 0;
+    input_scroll = 0;
     input_buffer[0] = '\0';
     shell_redraw_input();
 }
@@ -508,6 +570,7 @@ static void shell_set_input(const char *cmd) {
 
     input_length = i;
     input_cursor = input_length;
+    input_scroll = 0;
     input_buffer[input_length] = '\0';
 
     shell_redraw_input();
@@ -551,6 +614,7 @@ static void shell_prompt(void) {
     input_start_x = (int)terminal_get_cursor_x();
     input_start_y = (int)terminal_get_cursor_y();
     input_cursor = input_length;
+    input_scroll = 0;
 }
 
 static void shell_prompt_newline(void) {
@@ -701,6 +765,10 @@ static const char *help_lines[] = {
     "  mkworkspace <name>    Create workspace file",
     "  workspace <kind>      Open generated workspace kind",
     "  workstatus            Show workspace/layout status",
+    "  wsblocks <file>      List workspace blocks",
+    "  wsremove <f> \"t\"   Remove block by title",
+    "  wsreplace <f> ...    Replace block by title",
+    "  wsaction <f> ...     Change block action",
     "  wstemplate <t> <file> Create workspace from template",
     "  workspace buttons     Actions can run shell:commands",
     "  wstitle <file> \"text\" Set workspace title",
@@ -774,6 +842,7 @@ static const char *help_lines[] = {
     "  Up/Down               Browse command history",
     "  Backspace             Delete before cursor",
     "  Tab                   Complete command/path/theme",
+    "  Long input            Horizontally scrolls with < > markers",
     "  Enter                 Execute command",
     "",
     "Pager controls",
@@ -1856,13 +1925,13 @@ static int shell_echo_redirect_inline(const char *command) {
 
 
 static const char *command_lines[] = {
-    "Core: help commands clear version uptime time date clock",
+    "Core: help commands history clear version uptime time date clock",
     "Linux-like: echo pwd uname uname -a whoami hostname true false",
     "Redirects: echo text > file | echo text >> file",
     "Filesystem: ls tree cd cat write mkdir mkdir-p touch rm rm-r rename cp mv",
     "Editor/UI: nano edit nc wm currentapp",
     "Themes: themes theme theme list theme next theme prev theme <name>",
-    "Workspaces: workspaces open mkworkspace workspace workstatus wstemplate wstitle wsadd wsbutton wsnode wsend",
+    "Workspaces: workspaces open mkworkspace workspace workstatus wsblocks wsremove wsreplace wsaction wstemplate wstitle wsadd wsbutton wsnode wsend",
     "Scripts: run run -v startup",
     "AI/Services: intent gentask tasks tasklist taskshow tasklog taskopen taskstatus tasknext taskreopen taskdone ai aistatus services service apps runapp handlers",
     "Models/Packages: models modelstatus importmodel loadmodel packages install remove formats load",
@@ -2181,6 +2250,9 @@ static void shell_execute(const char *command) {
         return;
     } else if (strcmp(command, "commands") == 0) {
         pager_open("LOS Commands", command_lines, COMMAND_LINE_COUNT);
+        return;
+    } else if (strcmp(command, "history") == 0) {
+        shell_print_history();
         return;
     } else if (strcmp(command, "themes") == 0) {
         theme_selector_open();
@@ -2628,6 +2700,137 @@ static void shell_execute(const char *command) {
 
 
 
+
+    } else if (
+        command[0] == 'w' &&
+        command[1] == 's' &&
+        command[2] == 'b' &&
+        command[3] == 'l' &&
+        command[4] == 'o' &&
+        command[5] == 'c' &&
+        command[6] == 'k' &&
+        command[7] == 's' &&
+        command[8] == ' '
+    ) {
+        char *rest = (char *)(command + 9);
+        char file[64];
+
+        if (!shell_next_arg(&rest, file, 64)) {
+            shell_error("Usage: wsblocks file.workspace");
+            return;
+        }
+
+        if (!workspace_builder_list_blocks(file)) {
+            shell_error("Workspace blocks failed");
+        }
+
+        return;
+
+    } else if (
+        command[0] == 'w' &&
+        command[1] == 's' &&
+        command[2] == 'r' &&
+        command[3] == 'e' &&
+        command[4] == 'm' &&
+        command[5] == 'o' &&
+        command[6] == 'v' &&
+        command[7] == 'e' &&
+        command[8] == ' '
+    ) {
+        char *rest = (char *)(command + 9);
+        char file[64];
+        char title[96];
+
+        if (!shell_next_arg(&rest, file, 64) || !shell_next_arg(&rest, title, 96)) {
+            shell_error("Usage: wsremove file.workspace \"Title\"");
+            return;
+        }
+
+        if (workspace_builder_remove_block(file, title)) {
+            shell_ok("Workspace block removed");
+        } else {
+            shell_error("Workspace remove failed");
+        }
+
+        return;
+
+    } else if (
+        command[0] == 'w' &&
+        command[1] == 's' &&
+        command[2] == 'r' &&
+        command[3] == 'e' &&
+        command[4] == 'p' &&
+        command[5] == 'l' &&
+        command[6] == 'a' &&
+        command[7] == 'c' &&
+        command[8] == 'e' &&
+        command[9] == ' '
+    ) {
+        char *rest = (char *)(command + 10);
+        char file[64];
+        char old_title[96];
+        char type[32];
+        char new_title[96];
+        char content[384];
+
+        if (!shell_next_arg(&rest, file, 64) ||
+            !shell_next_arg(&rest, old_title, 96) ||
+            !shell_next_arg(&rest, type, 32) ||
+            !shell_next_arg(&rest, new_title, 96)) {
+            shell_error("Usage: wsreplace file \"Old\" type \"New\" \"Content\"");
+            return;
+        }
+
+        shell_copy_unquoted_rest(rest, content, 384);
+
+        if (!content[0]) {
+            shell_error("Usage: wsreplace file \"Old\" type \"New\" \"Content\"");
+            return;
+        }
+
+        if (workspace_builder_replace_block(file, old_title, type, new_title, content)) {
+            shell_ok("Workspace block replaced");
+        } else {
+            shell_error("Workspace replace failed");
+        }
+
+        return;
+
+    } else if (
+        command[0] == 'w' &&
+        command[1] == 's' &&
+        command[2] == 'a' &&
+        command[3] == 'c' &&
+        command[4] == 't' &&
+        command[5] == 'i' &&
+        command[6] == 'o' &&
+        command[7] == 'n' &&
+        command[8] == ' '
+    ) {
+        char *rest = (char *)(command + 9);
+        char file[64];
+        char title[96];
+        char action[256];
+
+        if (!shell_next_arg(&rest, file, 64) || !shell_next_arg(&rest, title, 96)) {
+            shell_error("Usage: wsaction file \"Title\" \"shell:command\"");
+            return;
+        }
+
+        shell_copy_unquoted_rest(rest, action, 256);
+
+        if (!action[0]) {
+            shell_error("Usage: wsaction file \"Title\" \"shell:command\"");
+            return;
+        }
+
+        if (workspace_builder_set_block_action(file, title, action)) {
+            shell_ok("Workspace block action updated");
+        } else {
+            shell_error("Workspace action failed");
+        }
+
+        return;
 
     } else if (
         command[0] == 'w' &&
@@ -3280,14 +3483,14 @@ static void shell_execute(const char *command) {
     ) {
         char *rest = (char *)(command + 9);
         char name[64];
-        char next_text[160];
+        char next_text[256];
 
         if (!shell_next_arg(&rest, name, 64)) {
             shell_error("Usage: tasknext name \"next action\"");
             return;
         }
 
-        shell_copy_unquoted_rest(rest, next_text, 160);
+        shell_copy_unquoted_rest(rest, next_text, 256);
 
         if (!next_text[0]) {
             shell_error("Usage: tasknext name \"next action\"");
@@ -3722,6 +3925,7 @@ void shell_run_command(const char *command) {
 void shell_initialize(void) {
     input_length = 0;
     input_cursor = 0;
+    input_scroll = 0;
     input_buffer[0] = '\0';
 
     if (!shell_cwd) {

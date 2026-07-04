@@ -10,7 +10,7 @@ static vfs_node_t *workspaces_dir = 0;
 static vfs_node_t *scripts_dir = 0;
 
 #define WS_MAX_BLOCKS 24
-#define WS_TEXT_POOL_SIZE 4096
+#define WS_TEXT_POOL_SIZE 8192
 #define WS_MAX_NODES 48
 
 #define WS_NODE_ROOT   1
@@ -340,7 +340,7 @@ static int parse_block_line(const char *line, ui_block_t *block, int index) {
 
     char type_buf[24];
     char title_buf[96];
-    char content_buf[256];
+    char content_buf[384];
     char action_buf[160];
 
     copy_token(type_buf, sizeof(type_buf), p, sep1 - p);
@@ -350,7 +350,7 @@ static int parse_block_line(const char *line, ui_block_t *block, int index) {
         copy_token(content_buf, sizeof(content_buf), sep2 + 1, sep3 - sep2 - 1);
         copy_token(action_buf, sizeof(action_buf), sep3 + 1, 159);
     } else {
-        copy_token(content_buf, sizeof(content_buf), sep2 + 1, 255);
+        copy_token(content_buf, sizeof(content_buf), sep2 + 1, 383);
         action_buf[0] = '\0';
     }
 
@@ -368,7 +368,7 @@ static int parse_block_line(const char *line, ui_block_t *block, int index) {
     block->w = w;
     block->h = h;
     block->title = ws_strdup_bounded(title_buf, 95);
-    block->content = ws_strdup_bounded(content_buf, 255);
+    block->content = ws_strdup_bounded(content_buf, 383);
     block->action = action_buf[0] ? ws_strdup_bounded(action_buf, 159) : 0;
     block->flags = 0;
 
@@ -1215,6 +1215,351 @@ int workspace_builder_add_node(const char *name, const char *kind, const char *o
 
     return ws_append_line(file, line);
 }
+
+
+static int ws_line_is_block(const char *line) {
+    return starts_with(line, "BLOCK=");
+}
+
+static int ws_line_title_matches(const char *line, const char *title) {
+    const char *p = line + 6;
+    const char *sep1 = 0;
+    const char *sep2 = 0;
+
+    if (!line || !title || !ws_line_is_block(line)) {
+        return 0;
+    }
+
+    for (int i = 0; p[i]; i++) {
+        if (p[i] == '|') {
+            sep1 = &p[i];
+            break;
+        }
+    }
+
+    if (!sep1) return 0;
+
+    for (int i = 1; sep1[i]; i++) {
+        if (sep1[i] == '|') {
+            sep2 = &sep1[i];
+            break;
+        }
+    }
+
+    if (!sep2) return 0;
+
+    int len = sep2 - sep1 - 1;
+    int ti = 0;
+
+    while (title[ti]) ti++;
+
+    if (len != ti) return 0;
+
+    for (int i = 0; i < len; i++) {
+        if (sep1[1 + i] != title[i]) {
+            return 0;
+        }
+    }
+
+    return 1;
+}
+
+static void ws_copy_sanitized(char *out, int *pos, int max, const char *src) {
+    if (!out || !pos || !src) return;
+
+    for (int i = 0; src[i] && *pos < max - 1; i++) {
+        if (src[i] == '|') {
+            out[(*pos)++] = '/';
+        } else if (src[i] == '\n') {
+            if (*pos < max - 2) {
+                out[(*pos)++] = '\\';
+                out[(*pos)++] = 'n';
+            }
+        } else {
+            out[(*pos)++] = src[i];
+        }
+    }
+}
+
+static void ws_make_block_line(char *out, int max, const char *type, const char *title, const char *content, const char *action) {
+    int pos = 0;
+
+    const char *prefix = "BLOCK=";
+
+    if (!out || max <= 0) return;
+
+    for (int i = 0; prefix[i] && pos < max - 1; i++) out[pos++] = prefix[i];
+
+    ws_copy_sanitized(out, &pos, max, type ? type : "text");
+
+    if (pos < max - 1) out[pos++] = '|';
+    ws_copy_sanitized(out, &pos, max, title ? title : "Block");
+
+    if (pos < max - 1) out[pos++] = '|';
+    ws_copy_sanitized(out, &pos, max, content ? content : "");
+
+    if (action && action[0]) {
+        if (pos < max - 1) out[pos++] = '|';
+        ws_copy_sanitized(out, &pos, max, action);
+    }
+
+    out[pos] = '\0';
+}
+
+static int ws_rewrite_blocks(const char *name, const char *match_title, const char *replacement_line, int remove_only, int replace_only) {
+    static char updated[4096];
+    char line[768];
+    int in = 0;
+    int out = 0;
+    int changed = 0;
+
+    if (!workspaces_dir || !name || !match_title) return 0;
+
+    name = workspace_name_only(name);
+
+    vfs_node_t *file = vfs_find_child(workspaces_dir, name);
+    if (!file || file->type != VFS_FILE || !file->content) return 0;
+
+    while (file->content[in]) {
+        int li = 0;
+
+        while (file->content[in] && file->content[in] != '\n' && li < 767) {
+            if (file->content[in] != '\r') {
+                line[li++] = file->content[in];
+            }
+            in++;
+        }
+
+        line[li] = '\0';
+
+        if (file->content[in] == '\n') {
+            in++;
+        }
+
+        if (ws_line_is_block(line) && ws_line_title_matches(line, match_title)) {
+            changed = 1;
+
+            if (!remove_only && replacement_line && replacement_line[0]) {
+                for (int i = 0; replacement_line[i] && out < 4095; i++) {
+                    updated[out++] = replacement_line[i];
+                }
+
+                if (out < 4095) updated[out++] = '\n';
+            }
+
+            if (replace_only) {
+                continue;
+            }
+
+            continue;
+        }
+
+        for (int i = 0; line[i] && out < 4095; i++) {
+            updated[out++] = line[i];
+        }
+
+        if (out < 4095) updated[out++] = '\n';
+    }
+
+    updated[out] = '\0';
+
+    if (!changed) return 0;
+
+    return vfs_write_file(file, updated);
+}
+
+int workspace_builder_list_blocks(const char *name) {
+    char line[768];
+    int in = 0;
+    int index = 0;
+
+    if (!workspaces_dir || !name) return 0;
+
+    name = workspace_name_only(name);
+
+    vfs_node_t *file = vfs_find_child(workspaces_dir, name);
+    if (!file || file->type != VFS_FILE || !file->content) return 0;
+
+    kprintf("Workspace blocks: %s\n", name);
+
+    while (file->content[in]) {
+        int li = 0;
+
+        while (file->content[in] && file->content[in] != '\n' && li < 767) {
+            if (file->content[in] != '\r') {
+                line[li++] = file->content[in];
+            }
+            in++;
+        }
+
+        line[li] = '\0';
+
+        if (file->content[in] == '\n') {
+            in++;
+        }
+
+        if (ws_line_is_block(line)) {
+            const char *p = line + 6;
+            const char *sep1 = 0;
+            const char *sep2 = 0;
+            const char *sep3 = 0;
+
+            for (int i = 0; p[i]; i++) {
+                if (p[i] == '|') {
+                    sep1 = &p[i];
+                    break;
+                }
+            }
+
+            if (sep1) {
+                for (int i = 1; sep1[i]; i++) {
+                    if (sep1[i] == '|') {
+                        sep2 = &sep1[i];
+                        break;
+                    }
+                }
+            }
+
+            if (sep2) {
+                for (int i = 1; sep2[i]; i++) {
+                    if (sep2[i] == '|') {
+                        sep3 = &sep2[i];
+                        break;
+                    }
+                }
+            }
+
+            kprintf("  #%u ", (uint32_t)index);
+
+            if (sep1 && sep2) {
+                kprintf("type=");
+                for (const char *x = p; x < sep1; x++) kprintf("%c", *x);
+
+                kprintf(" title=");
+                for (const char *x = sep1 + 1; x < sep2; x++) kprintf("%c", *x);
+
+                if (sep3) {
+                    kprintf(" action=yes");
+                }
+            } else {
+                kprintf("%s", line);
+            }
+
+            kprintf("\n");
+            index++;
+        }
+    }
+
+    if (index == 0) {
+        kprintf("  none\n");
+    }
+
+    return 1;
+}
+
+int workspace_builder_remove_block(const char *name, const char *title) {
+    return ws_rewrite_blocks(name, title, 0, 1, 1);
+}
+
+int workspace_builder_replace_block(const char *name, const char *old_title, const char *type, const char *new_title, const char *content) {
+    char line[768];
+
+    ws_make_block_line(line, 768, type, new_title, content, 0);
+
+    return ws_rewrite_blocks(name, old_title, line, 0, 1);
+}
+
+int workspace_builder_set_block_action(const char *name, const char *title, const char *action) {
+    static char updated[4096];
+    char line[768];
+    char type[32];
+    char block_title[96];
+    char content[256];
+
+    int in = 0;
+    int out = 0;
+    int changed = 0;
+
+    if (!workspaces_dir || !name || !title || !action) return 0;
+
+    name = workspace_name_only(name);
+
+    vfs_node_t *file = vfs_find_child(workspaces_dir, name);
+    if (!file || file->type != VFS_FILE || !file->content) return 0;
+
+    while (file->content[in]) {
+        int li = 0;
+
+        while (file->content[in] && file->content[in] != '\n' && li < 767) {
+            if (file->content[in] != '\r') {
+                line[li++] = file->content[in];
+            }
+            in++;
+        }
+
+        line[li] = '\0';
+
+        if (file->content[in] == '\n') {
+            in++;
+        }
+
+        if (ws_line_is_block(line) && ws_line_title_matches(line, title)) {
+            ui_block_t tmp;
+            if (parse_block_line(line, &tmp, 0)) {
+                int ti = 0;
+                int ci = 0;
+
+                type[0] = '\0';
+
+                if (tmp.type == UI_BLOCK_STATUS) {
+                    type[0] = 's'; type[1] = 't'; type[2] = 'a'; type[3] = 't'; type[4] = 'u'; type[5] = 's'; type[6] = '\0';
+                } else if (tmp.type == UI_BLOCK_BUTTON) {
+                    type[0] = 'b'; type[1] = 'u'; type[2] = 't'; type[3] = 't'; type[4] = 'o'; type[5] = 'n'; type[6] = '\0';
+                } else if (tmp.type == UI_BLOCK_TERMINAL) {
+                    type[0] = 't'; type[1] = 'e'; type[2] = 'r'; type[3] = 'm'; type[4] = 'i'; type[5] = 'n'; type[6] = 'a'; type[7] = 'l'; type[8] = '\0';
+                } else if (tmp.type == UI_BLOCK_CODE) {
+                    type[0] = 'c'; type[1] = 'o'; type[2] = 'd'; type[3] = 'e'; type[4] = '\0';
+                } else if (tmp.type == UI_BLOCK_LOGS) {
+                    type[0] = 'l'; type[1] = 'o'; type[2] = 'g'; type[3] = 's'; type[4] = '\0';
+                } else if (tmp.type == UI_BLOCK_LIST) {
+                    type[0] = 'l'; type[1] = 'i'; type[2] = 's'; type[3] = 't'; type[4] = '\0';
+                } else if (tmp.type == UI_BLOCK_AI) {
+                    type[0] = 'a'; type[1] = 'i'; type[2] = '\0';
+                } else {
+                    type[0] = 't'; type[1] = 'e'; type[2] = 'x'; type[3] = 't'; type[4] = '\0';
+                }
+
+                while (tmp.title && tmp.title[ti] && ti < 95) {
+                    block_title[ti] = tmp.title[ti];
+                    ti++;
+                }
+                block_title[ti] = '\0';
+
+                while (tmp.content && tmp.content[ci] && ci < 255) {
+                    content[ci] = tmp.content[ci];
+                    ci++;
+                }
+                content[ci] = '\0';
+
+                ws_make_block_line(line, 768, type, block_title, content, action);
+                changed = 1;
+            }
+        }
+
+        for (int i = 0; line[i] && out < 4095; i++) {
+            updated[out++] = line[i];
+        }
+
+        if (out < 4095) updated[out++] = '\n';
+    }
+
+    updated[out] = '\0';
+
+    if (!changed) return 0;
+
+    return vfs_write_file(file, updated);
+}
+
 
 int workspace_builder_end_node(const char *name) {
     if (!workspaces_dir || !name) return 0;

@@ -522,3 +522,47 @@ Task files include event lines:
     EVENT=status active
     EVENT=next Run make clean && make run
     EVENT=status done
+
+
+## Mutable workspace documents
+
+Workspace files are editable UI documents. Commands can patch existing generated workspaces.
+
+Examples:
+
+    wsblocks /workspaces/debug-build.workspace
+
+    wsremove /workspaces/debug-build.workspace "Build Log"
+
+    wsreplace /workspaces/debug-build.workspace "Problem" status "Weather" "Weather widget placeholder"
+
+    wsaction /workspaces/debug-build.workspace "Mark Done" "shell:taskdone debug-build"
+
+After patching, reopen the workspace:
+
+    open /workspaces/debug-build.workspace
+
+This is the foundation for AI-driven UI mutation.
+
+
+## Long shell input
+
+The shell supports horizontal scrolling for long commands.
+
+When the command is wider than the visible line, LOS shows markers:
+
+    <  input is scrolled left
+    >  more input exists to the right
+
+This is useful for long workspace mutation commands such as wsreplace, wsaction, tasknext, and intent phrases.
+
+
+## Shell history command
+
+LOS keeps recent shell commands and can print them.
+
+Example:
+
+    history
+
+This is useful for checking long commands such as wsreplace, wsaction, tasknext, and intent phrases.
