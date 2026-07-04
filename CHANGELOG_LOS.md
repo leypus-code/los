@@ -1,5 +1,21 @@
 # LOS Changelog
 
+## LOS v20.19b
+- Fixed intent command to pass the full phrase instead of a single argument
+- Fixed ai command intent pre-pass to use the full phrase
+- Added debug build error intent alias for coding/debug workspace creation
+
+## LOS v20.19a
+- Fixed shell build by including intent.h
+- Fixed help_lines string literal comma after ai command
+
+## LOS v20.19
+- Added workspace.template service action
+- Added rule-based intent support for creating workspace templates
+- Added intent command to the shell
+- ai command now attempts intent handling before AI fallback
+- Supported intents: create/open/create and open coding/system/notes/services workspace
+
 ## LOS v20.18
 - Added workspace path normalization for /workspaces/name.workspace paths
 - Workspace builder APIs now accept either name.workspace or /workspaces/name.workspace

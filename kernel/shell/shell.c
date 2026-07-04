@@ -27,6 +27,7 @@
 #include "../include/ai.h"
 #include "../include/model.h"
 #include "../include/service.h"
+#include "../include/intent.h"
 #include "../include/norton.h"
 #include "../include/pmm.h"
 #include "../include/paging.h"
@@ -129,7 +130,7 @@ static const char *completion_commands[] = {
     "themes", "theme",
     "workspaces", "open", "mkworkspace", "workspace", "workstatus",
     "wstemplate", "wstitle", "wsadd", "wsbutton", "wsnode", "wsend",
-    "run", "startup", "ai", "aistatus", "services", "service", "apps", "runapp", "handlers",
+    "run", "startup", "intent", "ai", "aistatus", "services", "service", "apps", "runapp", "handlers",
     "models", "modelstatus", "importmodel", "loadmodel",
     "packages", "install", "remove", "formats", "load",
     "mem", "pages", "paging", "kmalloc", "kfree", "allocpage", "freepage",
@@ -714,6 +715,7 @@ static const char *help_lines[] = {
     "  startup               Run /scripts/startup.los",
     "",
     "AI / Services / Apps",
+    "  intent \"text\"       Run rule-based intent",
     "  ai <intent>           Send intent to AI/Intent Engine",
     "  aistatus              Show AI status",
     "  services              List services",
@@ -920,6 +922,47 @@ static const char *shell_rest_arg(char **cursor) {
 
     *cursor = p;
     return p;
+}
+
+
+static void shell_copy_unquoted_rest(const char *src, char *out, int max) {
+    int start = 0;
+    int end = 0;
+    int len = 0;
+
+    if (!out || max <= 0) {
+        return;
+    }
+
+    out[0] = '\0';
+
+    if (!src) {
+        return;
+    }
+
+    while (src[start] == ' ') {
+        start++;
+    }
+
+    end = start;
+    while (src[end]) {
+        end++;
+    }
+
+    while (end > start && src[end - 1] == ' ') {
+        end--;
+    }
+
+    if (end > start + 1 && src[start] == '"' && src[end - 1] == '"') {
+        start++;
+        end--;
+    }
+
+    while (start < end && len < max - 1) {
+        out[len++] = src[start++];
+    }
+
+    out[len] = '\0';
 }
 
 
@@ -1430,7 +1473,7 @@ static const char *command_lines[] = {
     "Themes: themes theme theme list theme next theme prev theme <name>",
     "Workspaces: workspaces open mkworkspace workspace workstatus wstemplate wstitle wsadd wsbutton wsnode wsend",
     "Scripts: run run -v startup",
-    "AI/Services: ai aistatus services service apps runapp handlers",
+    "AI/Services: intent ai aistatus services service apps runapp handlers",
     "Models/Packages: models modelstatus importmodel loadmodel packages install remove formats load",
     "Kernel/Debug: mem pages paging kmalloc kfree allocpage freepage ps newtask current schedule dmesg kbd panic",
     "Scrollback: scrollup scrolldown top bottom PageUp PageDown",
@@ -2675,10 +2718,44 @@ static void shell_execute(const char *command) {
             kprintf("Model not found: %s\n", command + 10);
         }
     } else if (
+        command[0] == 'i' &&
+        command[1] == 'n' &&
+        command[2] == 't' &&
+        command[3] == 'e' &&
+        command[4] == 'n' &&
+        command[5] == 't' &&
+        command[6] == ' '
+    ) {
+        char text[128];
+
+        shell_copy_unquoted_rest(command + 7, text, 128);
+
+        if (!text[0]) {
+            shell_error("Usage: intent \"text\"");
+            return;
+        }
+
+        if (!intent_handle(text)) {
+            shell_error("Intent failed");
+        }
+
+        return;
+
+    } else if (
         command[0] == 'a' &&
         command[1] == 'i' &&
         command[2] == ' '
     ) {
+        char text[128];
+
+        shell_copy_unquoted_rest(command + 3, text, 128);
+
+        if (text[0]) {
+            if (intent_handle(text)) {
+                return;
+            }
+        }
+
         ai_prompt(command + 3);
 
 

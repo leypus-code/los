@@ -29,6 +29,7 @@ void service_list(void) {
     kprintf("  workspace.open <coding|server|video|file.workspace>\n");
     kprintf("  workspace.list\n");
     kprintf("  workspace.create <name.workspace>\n");
+    kprintf("  workspace.template <kind> <file.workspace>\n");
 }
 
 int service_call(const char *service, const char *action, const char *arg) {
@@ -56,6 +57,38 @@ int service_call(const char *service, const char *action, const char *arg) {
 
     if (strcmp(service, "workspace") == 0 && strcmp(action, "create") == 0) {
         return workspace_builder_create(arg, "custom");
+    }
+
+    if (strcmp(service, "workspace") == 0 && strcmp(action, "template") == 0) {
+        char kind[32];
+        char name[96];
+        int i = 0;
+        int j = 0;
+
+        if (!arg || !arg[0]) {
+            return 0;
+        }
+
+        while (arg[i] && arg[i] != ' ' && i < 31) {
+            kind[i] = arg[i];
+            i++;
+        }
+        kind[i] = '\0';
+
+        while (arg[i] == ' ') {
+            i++;
+        }
+
+        while (arg[i] && j < 95) {
+            name[j++] = arg[i++];
+        }
+        name[j] = '\0';
+
+        if (!kind[0] || !name[0]) {
+            return 0;
+        }
+
+        return workspace_builder_template(kind, name);
     }
 
     if (strcmp(service, "apps") == 0 && strcmp(action, "open") == 0) {

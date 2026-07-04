@@ -369,3 +369,27 @@ Direct supported action prefixes:
 Example workspace block line:
 
     BLOCK=button|Run Build|Build|shell:run /scripts/build.los
+
+
+## Intent-driven workspaces
+
+LOS can create and open workspaces from simple rule-based intents.
+
+Examples:
+
+    intent "create coding workspace"
+    intent "open coding workspace"
+    intent "create and open coding workspace"
+
+    intent "create system workspace"
+    intent "open system workspace"
+
+    intent "create notes workspace"
+    intent "open notes workspace"
+
+    intent "create services workspace"
+    intent "open services workspace"
+
+The ai command also tries intent handling first:
+
+    ai "create and open coding workspace"
