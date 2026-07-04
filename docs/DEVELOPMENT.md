@@ -123,17 +123,17 @@ LOS can generate workspace files from predefined templates.
 
 Examples:
 
-    wstemplate coding coding.workspace
-    open coding.workspace
+    wstemplate coding /workspaces/coding.workspace
+    open /workspaces/coding.workspace
 
-    wstemplate system system.workspace
-    open system.workspace
+    wstemplate system /workspaces/system.workspace
+    open /workspaces/system.workspace
 
-    wstemplate notes notes.workspace
-    open notes.workspace
+    wstemplate notes /workspaces/notes.workspace
+    open /workspaces/notes.workspace
 
-    wstemplate services services.workspace
-    open services.workspace
+    wstemplate services /workspaces/services.workspace
+    open /workspaces/services.workspace
 
 Available templates:
 

@@ -80,6 +80,23 @@ static int same_text(const char *a, const char *b) {
     return strcmp(a, b) == 0;
 }
 
+
+static const char *workspace_name_only(const char *name) {
+    const char *last = name;
+
+    if (!name) {
+        return "";
+    }
+
+    for (int i = 0; name[i]; i++) {
+        if (name[i] == '/') {
+            last = name + i + 1;
+        }
+    }
+
+    return last;
+}
+
 static int block_type_from_text(const char *type) {
     if (same_text(type, "status")) return UI_BLOCK_STATUS;
     if (same_text(type, "text")) return UI_BLOCK_TEXT;
@@ -693,6 +710,8 @@ int workspace_builder_template(const char *kind, const char *name) {
         return 0;
     }
 
+    name = workspace_name_only(name);
+
     vfs_node_t *file = vfs_find_child(workspaces_dir, name);
     if (!file) {
         file = vfs_create_file(workspaces_dir, name);
@@ -939,6 +958,8 @@ int workspace_builder_add_node(const char *name, const char *kind, const char *o
 
     if (!workspaces_dir || !name || !kind || !orientation) return 0;
 
+    name = workspace_name_only(name);
+
     vfs_node_t *file = vfs_find_child(workspaces_dir, name);
     if (!file) file = vfs_create_file(workspaces_dir, name);
     if (!file) return 0;
@@ -968,6 +989,8 @@ int workspace_builder_add_node(const char *name, const char *kind, const char *o
 
 int workspace_builder_end_node(const char *name) {
     if (!workspaces_dir || !name) return 0;
+
+    name = workspace_name_only(name);
 
     vfs_node_t *file = vfs_find_child(workspaces_dir, name);
     if (!file) return 0;

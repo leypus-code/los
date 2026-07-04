@@ -2351,10 +2351,19 @@ static void shell_execute(const char *command) {
         const char *target = target_arg;
         const char *name = target;
 
+        vfs_node_t *target_file = vfs_resolve(shell_cwd, target_arg);
+
         for (int i = 0; target[i]; i++) {
             if (target[i] == '/') {
                 name = target + i + 1;
             }
+        }
+
+        if (target_file && target_file->type == VFS_FILE) {
+            if (!fileassoc_open(name)) {
+                shell_error("Open failed");
+            }
+            return;
         }
 
         if (!fileassoc_open(name)) {

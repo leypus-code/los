@@ -1,5 +1,11 @@
 # LOS Changelog
 
+## LOS v20.18
+- Added workspace path normalization for /workspaces/name.workspace paths
+- Workspace builder APIs now accept either name.workspace or /workspaces/name.workspace
+- Updated workspace template docs to prefer full workspace paths
+- Improved open command path handling before file association dispatch
+
 ## LOS v20.17
 - Added public shell_run_command API
 - Workspace button actions can now execute shell commands using shell:<command>
