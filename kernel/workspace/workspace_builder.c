@@ -939,11 +939,11 @@ int workspace_builder_template(const char *kind, const char *name) {
             "NODE=root|vertical|1\n"
 
             "NODE=row|horizontal|1\n"
-            "BLOCK=ai|Center Input|AI input is ready.\\nUse Tab/Enter quick actions below.\\nPress Q for developer shell.\\nShell input: talk \"what is docker\"\n"
+            "BLOCK=ai|Center Input|AI input is ready.\\nUse Tab/Enter quick actions below.\\nPress Q for shell.\\nThen type naturally: what is docker\n"
             "END\n"
 
             "NODE=row|horizontal|1\n"
-            "BLOCK=text|Conversation|No conversation yet.\\nUse quick actions or type talk commands from shell.\n"
+            "BLOCK=text|Conversation|No conversation yet.\\nUse quick actions or type naturally from shell while AI mode is on.\n"
             "END\n"
 
             "NODE=row|horizontal|1\n"

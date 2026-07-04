@@ -2,6 +2,7 @@
 import argparse
 import html
 import json
+import os
 import re
 import socket
 import urllib.parse
@@ -13,7 +14,12 @@ PREFIX_WEB_IN = "LOS_WEB_REQUEST:"
 PREFIX_WEB_OUT = "LOS_WEB_RESPONSE:"
 
 SYSTEM = """You are the intent router for LOS, an AI-native operating system prototype.
-Return exactly one short LOS intent command, no explanation.
+
+Return exactly one line.
+Return no explanation.
+Return no markdown.
+Return no punctuation around the command.
+Return only one of the allowed commands.
 
 Allowed outputs:
 home
@@ -33,12 +39,10 @@ write notes
 plan project
 web:<search query>
 
-Rules:
-- Return a normal LOS intent for screen/workspace/task commands.
-- Return web:<search query> for factual/current/general internet questions.
-- Return exactly one line, no explanation.
-
-Choose the closest output for the user request.
+Routing rules:
+- If the user asks to change the screen, workspace, layout, dashboard, coding mode, notes, planning, debug, or UI state, return a normal LOS intent.
+- If the user asks a factual question, current information, weather, news, definition, price, person, company, place, or anything that needs external knowledge, return web:<search query>.
+- If unsure, return web:<original user query>.
 """
 
 def ascii_safe(text: str) -> str:
@@ -175,7 +179,82 @@ def sanitize_ai_route(answer: str, prompt: str) -> str:
 
     return mock_route(prompt)
 
+def extract_openai_text(data: dict) -> str:
+    if not isinstance(data, dict):
+        return ""
+
+    if isinstance(data.get("output_text"), str):
+        return data["output_text"].strip()
+
+    out = data.get("output")
+    if isinstance(out, list):
+        parts = []
+
+        for item in out:
+            if not isinstance(item, dict):
+                continue
+
+            content = item.get("content")
+
+            if isinstance(content, list):
+                for c in content:
+                    if not isinstance(c, dict):
+                        continue
+
+                    text = c.get("text")
+
+                    if isinstance(text, str):
+                        parts.append(text)
+
+                    if isinstance(text, dict) and isinstance(text.get("value"), str):
+                        parts.append(text["value"])
+
+            if isinstance(content, str):
+                parts.append(content)
+
+        if parts:
+            return "\n".join(parts).strip()
+
+    return ""
+
+def openai_route(prompt: str, model: str) -> str:
+    api_key = os.environ.get("OPENAI_API_KEY", "").strip()
+
+    if not api_key:
+        raise RuntimeError("OPENAI_API_KEY is not set")
+
+    payload = {
+        "model": model,
+        "instructions": SYSTEM,
+        "input": prompt,
+    }
+
+    req = urllib.request.Request(
+        "https://api.openai.com/v1/responses",
+        data=json.dumps(payload).encode("utf-8"),
+        headers={
+            "Content-Type": "application/json",
+            "Authorization": "Bearer " + api_key,
+        },
+        method="POST",
+    )
+
+    with urllib.request.urlopen(req, timeout=120) as r:
+        data = json.loads(r.read().decode("utf-8"))
+
+    text = extract_openai_text(data)
+    return text.strip()
+
+
 def handle_prompt(prompt: str, mode: str, model: str) -> str:
+    if mode == "openai":
+        try:
+            answer = openai_route(prompt, model)
+            return sanitize_ai_route(answer, prompt)
+        except Exception as e:
+            print(f"[bridge] openai error: {e}; using mock")
+            return mock_route(prompt)
+
     if mode == "ollama":
         try:
             answer = ollama_route(prompt, model)
@@ -425,8 +504,8 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=7777)
-    parser.add_argument("--mode", choices=["mock", "ollama"], default="mock")
-    parser.add_argument("--model", default="llama3.2")
+    parser.add_argument("--mode", choices=["mock", "ollama", "openai"], default="mock")
+    parser.add_argument("--model", default=os.environ.get("OPENAI_MODEL", "gpt-5.5"))
     parser.add_argument("--web", choices=["off", "mock", "ddg"], default="mock")
     args = parser.parse_args()
 

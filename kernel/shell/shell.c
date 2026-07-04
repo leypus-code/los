@@ -73,6 +73,32 @@ static int shell_is_interactive_script_command(const char *cmd) {
 
 
 
+
+static int shell_ai_input_mode = 1;
+
+static int shell_is_ai_input_mode_enabled(void) {
+    return shell_ai_input_mode;
+}
+
+static void shell_set_ai_input_mode(int enabled) {
+    shell_ai_input_mode = enabled ? 1 : 0;
+}
+
+
+static void shell_unknown_or_ai(const char *command) {
+    if (shell_is_ai_input_mode_enabled()) {
+        if (command && command[0]) {
+            if (!ai_bridge_talk(command)) {
+                kprintf("[ERR] AI input failed\n");
+            }
+            return;
+        }
+    }
+
+    kprintf("Unknown command: %s\n", command ? command : "");
+}
+
+
 static int shell_boot_chat_screen_enabled = 1;
 
 static void shell_open_boot_chat_screen(void) {
@@ -198,7 +224,7 @@ static void shell_print_history(void) {
 
 
 static const char *completion_commands[] = {
-    "help", "commands", "history", "home", "screen", "chatui", "chatreset", "bootui", "resetui", "resethome", "resetchat", "clear", "version", "uptime", "time", "date", "clock",
+    "help", "commands", "history", "dev", "user", "home", "screen", "chatui", "chatreset", "bootui", "resetui", "resethome", "resetchat", "clear", "version", "uptime", "time", "date", "clock",
     "echo", "pwd", "uname", "whoami", "hostname", "true", "false",
     "ls", "tree", "cd", "cat", "write", "mkdir", "touch", "rm", "rename", "cp", "mv",
     "nano", "edit", "nc", "wm", "currentapp",
@@ -1995,7 +2021,7 @@ static const char *command_lines[] = {
     "Themes: themes theme theme list theme next theme prev theme <name>",
     "Workspaces: workspaces open mkworkspace workspace workstatus wsblocks wsremove wsreplace wsaction wstemplate wstitle wsadd wsbutton wsnode wsend",
     "Scripts: run run -v startup",
-    "AI/Services: talk transcript ask web ring chat ops intent gentask tasks tasklist taskshow tasklog taskopen taskstatus tasknext taskreopen taskdone ai aistatus services service apps runapp handlers",
+    "AI/Services: say talk aimode bridge transcript ask web ring chat ops intent gentask tasks tasklist taskshow tasklog taskopen taskstatus tasknext taskreopen taskdone ai aistatus services service apps runapp handlers",
     "Models/Packages: models modelstatus importmodel loadmodel packages install remove formats load",
     "Kernel/Debug: mem pages paging kmalloc kfree allocpage freepage ps newtask current schedule dmesg kbd panic",
     "Scrollback: scrollup scrolldown top bottom PageUp PageDown",
@@ -2323,6 +2349,15 @@ static void shell_execute(const char *command) {
     } else if (strcmp(command, "bootui off") == 0) {
         shell_boot_chat_screen_enabled = 0;
         shell_ok("Boot UI disabled");
+        return;
+    } else if (strcmp(command, "dev") == 0) {
+        shell_set_ai_input_mode(0);
+        shell_ok("Developer mode: AI input disabled");
+        return;
+    } else if (strcmp(command, "user") == 0) {
+        shell_set_ai_input_mode(1);
+        shell_ok("User mode: AI input enabled");
+        intent_handle("chat screen");
         return;
     } else if (strcmp(command, "history") == 0) {
         shell_print_history();
@@ -3840,8 +3875,56 @@ static void shell_execute(const char *command) {
 
         return;
 
+    } else if (strcmp(command, "bridge") == 0) {
+        ai_bridge_status();
+        return;
+    } else if (strcmp(command, "bridge on") == 0) {
+        ai_bridge_set_host_enabled(1);
+        shell_ok("Host AI bridge enabled");
+        return;
+    } else if (strcmp(command, "bridge off") == 0) {
+        ai_bridge_set_host_enabled(0);
+        shell_ok("Host AI bridge disabled");
+        return;
     } else if (strcmp(command, "transcript") == 0) {
         ai_bridge_show_transcript();
+        return;
+
+    } else if (strcmp(command, "aimode") == 0) {
+        kprintf("AI input mode: %s\n", shell_is_ai_input_mode_enabled() ? "on" : "off");
+        return;
+    } else if (strcmp(command, "aimode on") == 0) {
+        shell_set_ai_input_mode(1);
+        shell_ok("AI input mode enabled");
+        return;
+    } else if (strcmp(command, "aimode off") == 0) {
+        shell_set_ai_input_mode(0);
+        shell_ok("AI input mode disabled");
+        return;
+
+    } else if (
+        command[0] == 's' &&
+        command[1] == 'a' &&
+        command[2] == 'y' &&
+        command[3] == ' '
+    ) {
+        char text[256];
+        char *rest = (char *)(command + 4);
+
+        if (!shell_next_arg(&rest, text, 256)) {
+            shell_error("Usage: say \"text\"");
+            return;
+        }
+
+        if (!text[0]) {
+            shell_error("Usage: say \"text\"");
+            return;
+        }
+
+        if (!ai_bridge_talk(text)) {
+            shell_error("Say failed");
+        }
+
         return;
 
     } else if (
@@ -4128,9 +4211,8 @@ static void shell_execute(const char *command) {
     } else if (strlen(command) == 0) {
         // empty command
     } else {
-        terminal_writestring("Unknown command: ");
-        terminal_writestring(command);
-        terminal_writestring("\n");
+        shell_unknown_or_ai(command);
+        return;
     }
 
 }

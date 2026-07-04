@@ -1,5 +1,34 @@
 # LOS Changelog
 
+## LOS v22.2a
+- Fixed AI input mode fallback for unknown shell input
+- Unknown natural-language input now routes into ai_bridge_talk when aimode is on
+- Developer mode still restores strict shell unknown-command behavior
+
+## LOS v22.2
+- Added AI input mode enabled by default
+- Unknown shell input can now fall back to local/host AI talk flow
+- Added aimode, aimode on, aimode off commands
+- Added say command as alias for talk
+- Added dev and user commands to switch between developer shell and user AI mode
+- This makes LOS feel like a chat-first operating system instead of a command shell
+
+## LOS v22.1
+- Added embedded local AI fallback inside the kernel-side AI bridge
+- talk now works immediately without Python bridge, internet, API keys, Ollama, or OpenAI
+- Added local routing for dashboard, coding mode, blank canvas, debug build, notes, planning, checklist, logs, Docker, Linux, LOS, and help
+- Host bridge is now optional and disabled by default
+- Added bridge, bridge on, and bridge off commands
+- This gives LOS a built-in default model path for instant offline MVP demos
+
+## LOS v22.0
+- Added OpenAI Host Bridge mode
+- Host bridge can now route LOS prompts through the OpenAI Responses API
+- Added OPENAI_API_KEY / OPENAI_MODEL environment support
+- Added .env.example for real model bridge setup
+- Mock and Ollama modes remain available
+- This is the first real hosted AI model integration path for LOS
+
 ## LOS v21.9
 - Added Chat Screen quick actions for Docker, Weather, Dashboard, Coding, Blank Canvas, Home, and Transcript
 - Chat Screen now works better as the default user-facing UI after boot

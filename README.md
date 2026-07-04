@@ -841,3 +841,62 @@ Commands:
     chatui
 
 This keeps shell as developer/BIOS mode while making Chat Screen the default user entry point.
+
+
+## OpenAI Host Bridge mode
+
+LOS can use a real hosted model through the host-side bridge.
+
+Terminal 1:
+
+    make run-ai
+
+Terminal 2:
+
+    export OPENAI_API_KEY="sk-..."
+    export OPENAI_MODEL="gpt-5.5"
+    python3 tools/ai_bridge.py --mode openai --web ddg
+
+Inside LOS:
+
+    talk "what is docker"
+    talk "weather in Vienna"
+    talk "make me a dashboard"
+    talk "switch to coding mode"
+
+The bridge asks the model to return exactly one LOS command, such as:
+
+    build dashboard
+    coding mode
+    web:what is docker
+
+LOS then executes that command or tool.
+
+
+## Embedded local AI
+
+LOS includes a small built-in local AI fallback.
+
+It works without:
+- Python bridge
+- internet
+- API keys
+- OpenAI
+- Ollama
+
+Examples:
+
+    talk "make me a dashboard"
+    talk "switch to coding mode"
+    talk "what is docker"
+    talk "what is linux"
+    talk "help"
+
+Host bridge is optional:
+
+    bridge
+    bridge on
+    bridge off
+
+When host bridge is off, `talk` uses the embedded local model immediately.
+When host bridge is on, LOS tries the host bridge first and falls back to local AI if unavailable.

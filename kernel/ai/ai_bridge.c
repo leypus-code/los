@@ -475,6 +475,181 @@ static void ai_bridge_update_web_widget(const char *query, const char *answer) {
 }
 
 
+
+static int ai_bridge_use_host = 0;
+
+void ai_bridge_set_host_enabled(int enabled) {
+    ai_bridge_use_host = enabled ? 1 : 0;
+}
+
+int ai_bridge_host_enabled(void) {
+    return ai_bridge_use_host;
+}
+
+void ai_bridge_status(void) {
+    kprintf("AI Bridge host mode: %s\n", ai_bridge_use_host ? "on" : "off");
+    kprintf("Local embedded AI: on\n");
+}
+
+static char ai_bridge_ascii_lower(char c) {
+    if (c >= 'A' && c <= 'Z') {
+        return (char)(c + 32);
+    }
+
+    return c;
+}
+
+static int ai_bridge_contains_ci(const char *text, const char *needle) {
+    int i = 0;
+
+    if (!text || !needle || !needle[0]) return 0;
+
+    while (text[i]) {
+        int j = 0;
+
+        while (needle[j]) {
+            char a = ai_bridge_ascii_lower(text[i + j]);
+            char b = ai_bridge_ascii_lower(needle[j]);
+
+            if (!text[i + j] || a != b) {
+                break;
+            }
+
+            j++;
+        }
+
+        if (!needle[j]) {
+            return 1;
+        }
+
+        i++;
+    }
+
+    return 0;
+}
+
+static int ai_bridge_local_answer(const char *prompt, const char *answer) {
+    kprintf("Local AI: %s\n", answer);
+    ring_log_operation("local model: answer");
+    ai_bridge_update_chat_widget(prompt, answer);
+    ai_bridge_open_chat_after_result();
+    return 1;
+}
+
+static int ai_bridge_local_intent(const char *prompt, const char *intent) {
+    kprintf("Local AI: %s\n", intent);
+    ring_log_operation("local model: intent");
+    ai_bridge_update_chat_widget(prompt, intent);
+
+    if (!intent_handle(intent)) {
+        return ai_bridge_local_answer(prompt, "Local model selected an intent, but LOS could not execute it.");
+    }
+
+    return 1;
+}
+
+static int ai_bridge_local_execute(const char *prompt) {
+    if (!prompt || !prompt[0]) {
+        return 0;
+    }
+
+    /*
+     * Tiny embedded default model.
+     * This is intentionally simple: no heap, no network, no external API.
+     * It gives LOS useful behavior immediately after boot.
+     */
+
+    if (ai_bridge_contains_ci(prompt, "dashboard") ||
+        ai_bridge_contains_ci(prompt, "dash") ||
+        ai_bridge_contains_ci(prompt, "main screen")) {
+        return ai_bridge_local_intent(prompt, "build dashboard");
+    }
+
+    if (ai_bridge_contains_ci(prompt, "coding") ||
+        ai_bridge_contains_ci(prompt, "code mode") ||
+        ai_bridge_contains_ci(prompt, "developer") ||
+        ai_bridge_contains_ci(prompt, "kernel build")) {
+        return ai_bridge_local_intent(prompt, "coding mode");
+    }
+
+    if (ai_bridge_contains_ci(prompt, "blank") ||
+        ai_bridge_contains_ci(prompt, "empty") ||
+        ai_bridge_contains_ci(prompt, "canvas")) {
+        return ai_bridge_local_intent(prompt, "blank canvas");
+    }
+
+    if (ai_bridge_contains_ci(prompt, "reset")) {
+        return ai_bridge_local_intent(prompt, "reset home");
+    }
+
+    if (ai_bridge_contains_ci(prompt, "debug") ||
+        ai_bridge_contains_ci(prompt, "build error") ||
+        ai_bridge_contains_ci(prompt, "fix build")) {
+        return ai_bridge_local_intent(prompt, "debug build error");
+    }
+
+    if (ai_bridge_contains_ci(prompt, "note") ||
+        ai_bridge_contains_ci(prompt, "notes")) {
+        return ai_bridge_local_intent(prompt, "write notes");
+    }
+
+    if (ai_bridge_contains_ci(prompt, "plan") ||
+        ai_bridge_contains_ci(prompt, "planning")) {
+        return ai_bridge_local_intent(prompt, "plan project");
+    }
+
+    if (ai_bridge_contains_ci(prompt, "checklist") ||
+        ai_bridge_contains_ci(prompt, "todo")) {
+        return ai_bridge_local_intent(prompt, "add checklist");
+    }
+
+    if (ai_bridge_contains_ci(prompt, "logs") ||
+        ai_bridge_contains_ci(prompt, "log panel")) {
+        return ai_bridge_local_intent(prompt, "add logs panel");
+    }
+
+    if (ai_bridge_contains_ci(prompt, "weather")) {
+        return ai_bridge_local_answer(
+            prompt,
+            "Local mode has no live weather. Enable host bridge for internet weather, or use add weather widget."
+        );
+    }
+
+    if (ai_bridge_contains_ci(prompt, "docker")) {
+        return ai_bridge_local_answer(
+            prompt,
+            "Docker is a platform for packaging and running applications in isolated containers."
+        );
+    }
+
+    if (ai_bridge_contains_ci(prompt, "linux")) {
+        return ai_bridge_local_answer(
+            prompt,
+            "Linux is an open-source Unix-like operating system kernel used by many distributions."
+        );
+    }
+
+    if (ai_bridge_contains_ci(prompt, "los")) {
+        return ai_bridge_local_answer(
+            prompt,
+            "LOS is an AI-native OS prototype where chat, tasks, tools, and mutable workspaces are first-class system concepts."
+        );
+    }
+
+    if (ai_bridge_contains_ci(prompt, "help")) {
+        return ai_bridge_local_answer(
+            prompt,
+            "Try: talk make dashboard, talk coding mode, talk what is docker, talk weather in Vienna, or bridge on for host AI."
+        );
+    }
+
+    return ai_bridge_local_answer(
+        prompt,
+        "Local AI did not understand fully. Try dashboard, coding mode, debug build, notes, plan, docker, linux, or bridge on."
+    );
+}
+
+
 int ai_bridge_ask(const char *prompt, char *out, int max) {
     char line[384];
 
@@ -509,9 +684,22 @@ int ai_bridge_ask(const char *prompt, char *out, int max) {
 int ai_bridge_execute(const char *prompt) {
     char answer[256];
 
+    if (!prompt || !prompt[0]) {
+        return 0;
+    }
+
+    /*
+     * Default MVP behavior:
+     * Use embedded local AI immediately.
+     * Host bridge is optional and must be enabled with `bridge on`.
+     */
+    if (!ai_bridge_use_host) {
+        return ai_bridge_local_execute(prompt);
+    }
+
     if (!ai_bridge_ask(prompt, answer, 256)) {
-        kprintf("AI Bridge: fallback to local chat\n");
-        return ring_chat(prompt);
+        kprintf("AI Bridge: host unavailable, using local AI\n");
+        return ai_bridge_local_execute(prompt);
     }
 
     kprintf("AI Bridge: %s\n", answer);
@@ -525,13 +713,16 @@ int ai_bridge_execute(const char *prompt) {
     ai_bridge_update_chat_widget(prompt, answer);
 
     if (!intent_handle(answer)) {
-        kprintf("AI Bridge: response was not an intent, showing as operation\n");
+        kprintf("AI Bridge: response was not an intent, showing as chat answer\n");
+        ai_bridge_update_chat_widget(prompt, answer);
+        ai_bridge_open_chat_after_result();
         ring_log_operation(answer);
         return 1;
     }
 
     return 1;
 }
+
 
 int ai_bridge_web(const char *query) {
     char line[512];
