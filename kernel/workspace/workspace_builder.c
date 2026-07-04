@@ -953,7 +953,7 @@ int workspace_builder_template(const char *kind, const char *name) {
             "NODE=row|horizontal|3\n"
             "BLOCK=list|Live Tasks|Use tasklist\\ntaskopen debug-build\\ntaskdone debug-build\n"
             "BLOCK=button|Project Plan|Create Project Plan|shell:chat \"plan project\"\n"
-            "BLOCK=button|Task List|Show Task List|shell:tasklist\n"
+            "BLOCK=logs|AI Operations|No AI operations yet\n"
             "END\n"
 
             "END\n"

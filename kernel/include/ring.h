@@ -6,5 +6,7 @@ void ring_set_state(const char *state);
 void ring_status(void);
 int ring_handle_command(const char *command);
 int ring_chat(const char *text);
+void ring_log_operation(const char *text);
+void ring_show_operations(void);
 
 #endif

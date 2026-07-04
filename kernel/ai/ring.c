@@ -14,6 +14,109 @@
 
 static int ring_state = RING_IDLE;
 
+#define RING_OP_COUNT 8
+#define RING_OP_LEN   96
+
+static char ring_ops[RING_OP_COUNT][RING_OP_LEN];
+static int ring_op_count = 0;
+
+static void ring_copy_text(char *dst, const char *src, int max) {
+    int i = 0;
+
+    if (!dst || max <= 0) return;
+
+    if (!src) {
+        dst[0] = '\0';
+        return;
+    }
+
+    while (src[i] && i < max - 1) {
+        dst[i] = src[i];
+        i++;
+    }
+
+    dst[i] = '\0';
+}
+
+static const char *ring_operations_content(void) {
+    static char out[768];
+    int pos = 0;
+    int start = ring_op_count - RING_OP_COUNT;
+
+    if (start < 0) {
+        start = 0;
+    }
+
+    out[0] = '\0';
+
+    if (ring_op_count == 0) {
+        ring_copy_text(out, "No AI operations yet", 768);
+        return out;
+    }
+
+    for (int i = start; i < ring_op_count; i++) {
+        int slot = i % RING_OP_COUNT;
+        const char *prefix = "- ";
+
+        for (int x = 0; prefix[x] && pos < 767; x++) {
+            out[pos++] = prefix[x];
+        }
+
+        for (int x = 0; ring_ops[slot][x] && pos < 767; x++) {
+            char c = ring_ops[slot][x];
+
+            if (c == '\n' || c == '\r') {
+                c = ' ';
+            }
+
+            out[pos++] = c;
+        }
+
+        if (i != ring_op_count - 1 && pos < 766) {
+            out[pos++] = '\\';
+            out[pos++] = 'n';
+        }
+    }
+
+    out[pos] = '\0';
+    return out;
+}
+
+static void ring_update_home_operations(void) {
+    if (workspace_builder_replace_block(
+            "/workspaces/home.workspace",
+            "AI Operations",
+            "logs",
+            "AI Operations",
+            ring_operations_content()
+        )) {
+        return;
+    }
+
+    workspace_builder_replace_block(
+        "/workspaces/home.workspace",
+        "Task List",
+        "logs",
+        "AI Operations",
+        ring_operations_content()
+    );
+}
+
+void ring_log_operation(const char *text) {
+    int slot = ring_op_count % RING_OP_COUNT;
+
+    ring_copy_text(ring_ops[slot], text ? text : "operation", RING_OP_LEN);
+    ring_op_count++;
+
+    ring_update_home_operations();
+}
+
+void ring_show_operations(void) {
+    kprintf("AI Operations\n");
+    kprintf("  %s\n", ring_operations_content());
+}
+
+
 static const char *ring_home_content(void) {
     if (ring_state == RING_IDLE) {
         return "State: idle\\nVisual: centered input bar\\nWaiting for the first thought";
@@ -71,6 +174,7 @@ static const char *ring_state_name(void) {
 
 void ring_initialize(void) {
     ring_state = RING_IDLE;
+    ring_op_count = 0;
     eventlog_add("ai ring initialized");
 }
 
@@ -81,6 +185,7 @@ void ring_set_state(const char *state) {
         ring_state = RING_IDLE;
         eventlog_add("ring state idle");
         ring_update_home_visual();
+        ring_log_operation("ring: idle");
         return;
     }
 
@@ -88,6 +193,7 @@ void ring_set_state(const char *state) {
         ring_state = RING_CHAT;
         eventlog_add("ring state chat");
         ring_update_home_visual();
+        ring_log_operation("ring: chat");
         return;
     }
 
@@ -95,6 +201,7 @@ void ring_set_state(const char *state) {
         ring_state = RING_LISTENING;
         eventlog_add("ring state listening");
         ring_update_home_visual();
+        ring_log_operation("ring: listening");
         return;
     }
 
@@ -102,6 +209,7 @@ void ring_set_state(const char *state) {
         ring_state = RING_THINKING;
         eventlog_add("ring state thinking");
         ring_update_home_visual();
+        ring_log_operation("ring: thinking");
         return;
     }
 
@@ -109,6 +217,7 @@ void ring_set_state(const char *state) {
         ring_state = RING_DOCKED;
         eventlog_add("ring state docked");
         ring_update_home_visual();
+        ring_log_operation("ring: docked");
         return;
     }
 }
@@ -199,6 +308,7 @@ int ring_chat(const char *text) {
     }
 
     ring_set_state("chat");
+    ring_log_operation(text);
     kprintf("Ring: chat expanded\n");
 
     ring_set_state("thinking");

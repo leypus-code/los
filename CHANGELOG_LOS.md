@@ -1,5 +1,16 @@
 # LOS Changelog
 
+## LOS v20.31a
+- Fixed missing ops shell command handler
+- Ensured ops command is available through shell and ring API
+
+## LOS v20.31
+- Added AI operation log in ring module
+- Added ops shell command
+- Home now includes AI Operations block
+- Ring state changes and chat commands are logged
+- Home workspace mutations are logged as AI operations
+
 ## LOS v20.30a
 - Made Home workspace opening robust through direct workspace_builder_open fallback
 - Fixed ring home to open Home directly instead of silently relying on service open

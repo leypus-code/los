@@ -518,3 +518,21 @@ This preserves AI mutations such as:
     chat "add logs panel"
 
 The AI Ring state is also reflected in the `AI Ring` block on Home.
+
+
+## AI operation log
+
+LOS keeps a small in-memory operation log for AI/Ring activity.
+
+Command:
+
+    ops
+
+Examples of logged operations:
+
+    ring: chat
+    ring: thinking
+    mutation: added weather widget
+    mutation: added checklist
+
+Home includes an `AI Operations` block that reflects recent AI activity.

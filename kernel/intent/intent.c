@@ -1,6 +1,7 @@
 #include "../include/intent.h"
 #include "../include/service.h"
 #include "../include/workspace_builder.h"
+#include "../include/ring.h"
 #include "../include/kprintf.h"
 #include "../include/string.h"
 #include "../include/eventlog.h"
@@ -221,6 +222,7 @@ static int intent_home_weather(void) {
     );
 
     eventlog_add("ai mutated home: weather widget");
+    ring_log_operation("mutation: added weather widget");
     return intent_open_home_after_mutation();
 }
 
@@ -236,6 +238,7 @@ static int intent_home_command_center(void) {
     );
 
     eventlog_add("ai mutated home: command center restored");
+    ring_log_operation("mutation: restored command center");
     return intent_open_home_after_mutation();
 }
 
@@ -259,6 +262,7 @@ static int intent_home_checklist(void) {
     );
 
     eventlog_add("ai mutated home: checklist widget");
+    ring_log_operation("mutation: added checklist");
     return intent_open_home_after_mutation();
 }
 
@@ -274,6 +278,7 @@ static int intent_home_tasks(void) {
     );
 
     eventlog_add("ai mutated home: live tasks restored");
+    ring_log_operation("mutation: restored live tasks");
     return intent_open_home_after_mutation();
 }
 
@@ -297,6 +302,7 @@ static int intent_home_logs_panel(void) {
     );
 
     eventlog_add("ai mutated home: logs panel");
+    ring_log_operation("mutation: added logs panel");
     return intent_open_home_after_mutation();
 }
 
@@ -312,6 +318,7 @@ static int intent_home_engine_panel(void) {
     );
 
     eventlog_add("ai mutated home: engine panel restored");
+    ring_log_operation("mutation: restored engine panel");
     return intent_open_home_after_mutation();
 }
 

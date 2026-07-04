@@ -785,6 +785,7 @@ static const char *help_lines[] = {
     "",
     "AI / Services / Apps",
     "  ring                  Show AI ring state",
+    "  ops                   Show AI operation log",
     "  ring <state>          Set AI ring state",
     "  chat \"text\"         AI ring chat command",
     "  chat \"add weather\"  Mutate Home workspace",
@@ -1938,7 +1939,7 @@ static const char *command_lines[] = {
     "Themes: themes theme theme list theme next theme prev theme <name>",
     "Workspaces: workspaces open mkworkspace workspace workstatus wsblocks wsremove wsreplace wsaction wstemplate wstitle wsadd wsbutton wsnode wsend",
     "Scripts: run run -v startup",
-    "AI/Services: ring chat intent gentask tasks tasklist taskshow tasklog taskopen taskstatus tasknext taskreopen taskdone ai aistatus services service apps runapp handlers",
+    "AI/Services: ring chat ops intent gentask tasks tasklist taskshow tasklog taskopen taskstatus tasknext taskreopen taskdone ai aistatus services service apps runapp handlers",
     "Models/Packages: models modelstatus importmodel loadmodel packages install remove formats load",
     "Kernel/Debug: mem pages paging kmalloc kfree allocpage freepage ps newtask current schedule dmesg kbd panic",
     "Scrollback: scrollup scrolldown top bottom PageUp PageDown",
@@ -3698,6 +3699,10 @@ static void shell_execute(const char *command) {
         }
 
         shell_error("Unknown generated task");
+        return;
+
+    } else if (strcmp(command, "ops") == 0) {
+        ring_show_operations();
         return;
 
     } else if (strcmp(command, "ring") == 0) {
