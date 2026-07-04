@@ -1,5 +1,41 @@
 # LOS Changelog
 
+## LOS v23.0a
+- Added Multiboot2 handoff from boot.S to kernel_main
+- Kernel now stores Multiboot2 magic and info structure address
+- Added multiboot2.h definitions
+- Added mbi shell command for boot info debugging
+- This prepares LOS for real framebuffer graphics mode
+
+## LOS v22.7e
+- Reverted terminal_initialize usage in Pixel Boot Screen
+- Avoided VGA color/background corruption during boot screen drawing
+- Pixel Boot Screen now scroll-clears old boot logs without resetting terminal state
+
+## LOS v22.7d
+- Pixel Boot Screen now clears previous boot logs before drawing
+- Prevented visual boot screen from being pushed upward by earlier boot text
+- Updated QEMU launch flags for zoom-to-fit GTK display when supported
+
+## LOS v22.7c
+- Compact Pixel Boot Screen to fit within VGA 80x25 text mode
+- Prevented boot frame from scrolling the top of the screen away
+- Preserved room for the LOS shell prompt below the visual boot surface
+
+## LOS v22.7b
+- Improved Pixel Boot Screen layout
+- Centered LOS logo
+- Added full-width boot frame
+- Moved boot information inside the visual frame
+- Kept shell prompt below the visual boot surface
+
+## LOS v22.7
+- Added Pixel Boot Screen as screen0
+- Boot now shows a visual LOS splash/loading screen before Chat Screen
+- Added screen0, pixels, and bootscreen commands
+- Updated screen runtime list to include Pixel Boot Screen, Chat Screen, and Home/Dashboard
+- This is the first visual OS-style screen layer before future framebuffer graphics
+
 ## LOS v22.6
 - Added multi-screen workspace runtime
 - Added screen1 for Chat Screen and screen2 for Home/Dashboard

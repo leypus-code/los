@@ -2,6 +2,7 @@
 #include "../include/terminal.h"
 #include "../include/string.h"
 #include "../include/kernel.h"
+#include "../include/multiboot2.h"
 #include "../include/timer.h"
 #include "../include/kprintf.h"
 #include "../include/theme.h"
@@ -100,13 +101,60 @@ static void shell_unknown_or_ai(const char *command) {
 
 
 
+
 static int shell_active_screen = 1;
+
+static void shell_draw_pixel_boot_screen(void) {
+    /*
+     * Compact VGA text-mode boot surface.
+     * Must stay below 22 lines so the shell prompt remains visible.
+     */
+
+    /*
+     * Push earlier boot logs out of the visible VGA area without resetting
+     * terminal colors/state.
+     */
+    for (int i = 0; i < 25; i++) {
+        kprintf("\n");
+    }
+
+    kprintf("+------------------------------------------------------------------------------+\n");
+    kprintf("|                                                                              |\n");
+    kprintf("|                         ##          #####        #####                        |\n");
+    kprintf("|                         ##         ##   ##      ##   ##                       |\n");
+    kprintf("|                         ##         ##   ##      ##                            |\n");
+    kprintf("|                         ##         ##   ##       #####                        |\n");
+    kprintf("|                         #######     #####       ##   ##                       |\n");
+    kprintf("|                         #######      ###         #####                        |\n");
+    kprintf("|                                                                              |\n");
+    kprintf("|                         AI-NATIVE OPERATING SYSTEM                           |\n");
+    kprintf("|                                                                              |\n");
+    kprintf("|   Kernel runtime        [#####...............]                                |\n");
+    kprintf("|   Workspace engine      [##########..........]                                |\n");
+    kprintf("|   AI provider contract  [###############.....]                                |\n");
+    kprintf("|   UI patch runtime      [##################..]                                |\n");
+    kprintf("|   Chat surface          [####################]                                |\n");
+    kprintf("|                                                                              |\n");
+    kprintf("|   Ready. Commands: screen1 = Chat, screen2 = Home, user = AI mode             |\n");
+    kprintf("|                                                                              |\n");
+    kprintf("+------------------------------------------------------------------------------+\n");
+}
+
+
+
+static void shell_open_screen0(void) {
+    shell_active_screen = 0;
+    ai_bridge_context_set_workspace("Pixel Boot Screen");
+    shell_draw_pixel_boot_screen();
+}
+
 
 static void shell_screen_show_status(void) {
     kprintf("LOS Screens\n");
+    kprintf("%s screen0: Pixel Boot Screen\n", shell_active_screen == 0 ? "*" : " ");
     kprintf("%s screen1: Chat Screen\n", shell_active_screen == 1 ? "*" : " ");
     kprintf("%s screen2: Home / Dashboard\n", shell_active_screen == 2 ? "*" : " ");
-    kprintf("Commands: screen1, screen2, nextscreen, prevscreen\n");
+    kprintf("Commands: screen0, screen1, screen2, nextscreen, prevscreen\n");
 }
 
 static void shell_open_screen1(void) {
@@ -141,9 +189,15 @@ static void shell_open_boot_chat_screen(void) {
         return;
     }
 
-    kprintf("\n[INFO] Opening LOS Chat Screen\n");
-    intent_handle("chat screen");
+    /*
+     * v22.7a:
+     * Boot stops on Pixel Boot Screen.
+     * Chat Screen is opened manually with screen1/user.
+     */
+    shell_open_screen0();
 }
+
+
 
 
 #define SHELL_BUFFER_SIZE 512
@@ -259,7 +313,7 @@ static void shell_print_history(void) {
 
 
 static const char *completion_commands[] = {
-    "help", "commands", "history", "screens", "screen1", "screen2", "nextscreen", "prevscreen", "dev", "user", "home", "screen", "chatui", "chatreset", "bootui", "resetui", "resethome", "resetchat", "clear", "version", "uptime", "time", "date", "clock",
+    "help", "commands", "history", "mbi", "mbi", "screens", "screen0", "pixels", "bootscreen", "screen1", "screen2", "nextscreen", "prevscreen", "dev", "user", "home", "screen", "chatui", "chatreset", "bootui", "resetui", "resethome", "resetchat", "clear", "version", "uptime", "time", "date", "clock",
     "echo", "pwd", "uname", "whoami", "hostname", "true", "false",
     "ls", "tree", "cd", "cat", "write", "mkdir", "touch", "rm", "rename", "cp", "mv",
     "nano", "edit", "nc", "wm", "currentapp",
@@ -825,6 +879,7 @@ static const char *help_lines[] = {
     "  commands              Show compact command inventory",
     "  clear                 Clear screen with active theme",
     "  version               Show LOS version",
+    "  mbi                   Show Multiboot2 boot info",
     "  uptime                Show timer ticks",
     "  time                  Show RTC time",
     "  date                  Show RTC date",
@@ -2394,6 +2449,13 @@ static void shell_execute(const char *command) {
         shell_ok("User mode: AI input enabled");
         shell_open_screen1();
         return;
+    } else if (
+        strcmp(command, "screen0") == 0 ||
+        strcmp(command, "pixels") == 0 ||
+        strcmp(command, "bootscreen") == 0
+    ) {
+        shell_open_screen0();
+        return;
     } else if (strcmp(command, "screens") == 0) {
         shell_screen_show_status();
         return;
@@ -2408,6 +2470,18 @@ static void shell_execute(const char *command) {
         return;
     } else if (strcmp(command, "prevscreen") == 0) {
         shell_prev_screen();
+        return;
+    } else if (strcmp(command, "mbi") == 0) {
+        kprintf("Multiboot2\n");
+        kprintf("magic: 0x%x\n", kernel_get_boot_magic());
+        kprintf("info:  0x%x\n", kernel_get_boot_mbi_addr());
+
+        if (kernel_get_boot_magic() == MULTIBOOT2_BOOTLOADER_MAGIC) {
+            kprintf("status: ok\n");
+        } else {
+            kprintf("status: invalid magic\n");
+        }
+
         return;
     } else if (strcmp(command, "history") == 0) {
         shell_print_history();

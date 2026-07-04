@@ -28,7 +28,19 @@ stack_top:
 .type _start, @function
 _start:
     mov $stack_top, %esp
+
+    /*
+     * Multiboot2 handoff:
+     * eax = magic
+     * ebx = multiboot2 information structure address
+     *
+     * C cdecl args are pushed right-to-left:
+     * kernel_main(uint32_t magic, uint32_t mbi_addr)
+     */
+    push %ebx
+    push %eax
     call kernel_main
+    add $8, %esp
 
 .hang:
     cli

@@ -30,6 +30,24 @@
 #include "include/fileassoc.h"
 #include "include/pmm.h"
 #include "include/paging.h"
+#include "include/multiboot2.h"
+
+
+static uint32_t kernel_boot_magic = 0;
+static uint32_t kernel_boot_mbi_addr = 0;
+
+void kernel_set_boot_info(uint32_t magic, uint32_t mbi_addr) {
+    kernel_boot_magic = magic;
+    kernel_boot_mbi_addr = mbi_addr;
+}
+
+uint32_t kernel_get_boot_magic(void) {
+    return kernel_boot_magic;
+}
+
+uint32_t kernel_get_boot_mbi_addr(void) {
+    return kernel_boot_mbi_addr;
+}
 
 void kernel_panic(const char *message) {
     kprintf("\n\n[KERNEL PANIC] %s\nSystem halted.\n", message);
