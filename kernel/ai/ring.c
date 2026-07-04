@@ -3,6 +3,8 @@
 #include "../include/string.h"
 #include "../include/eventlog.h"
 #include "../include/intent.h"
+#include "../include/service.h"
+#include "../include/workspace_builder.h"
 
 #define RING_IDLE      0
 #define RING_CHAT      1
@@ -11,6 +13,52 @@
 #define RING_DOCKED    4
 
 static int ring_state = RING_IDLE;
+
+static const char *ring_home_content(void) {
+    if (ring_state == RING_IDLE) {
+        return "State: idle\\nVisual: centered input bar\\nWaiting for the first thought";
+    }
+
+    if (ring_state == RING_CHAT) {
+        return "State: chat\\nVisual: full-screen conversation\\nUser is typing or speaking";
+    }
+
+    if (ring_state == RING_LISTENING) {
+        return "State: listening\\nVisual: pulsing ring\\nVoice capture active";
+    }
+
+    if (ring_state == RING_THINKING) {
+        return "State: thinking\\nVisual: vibrating ring\\nAI is preparing workspace mutation";
+    }
+
+    if (ring_state == RING_DOCKED) {
+        return "State: docked\\nVisual: ring at screen edge\\nWorkspace is ready";
+    }
+
+    return "State: unknown";
+}
+
+static void ring_update_home_visual(void) {
+    if (workspace_builder_replace_block(
+            "/workspaces/home.workspace",
+            "AI Ring",
+            "ai",
+            "AI Ring",
+            ring_home_content()
+        )) {
+        return;
+    }
+
+    service_call("workspace", "template", "home /workspaces/home.workspace");
+
+    workspace_builder_replace_block(
+        "/workspaces/home.workspace",
+        "AI Ring",
+        "ai",
+        "AI Ring",
+        ring_home_content()
+    );
+}
 
 static const char *ring_state_name(void) {
     if (ring_state == RING_IDLE) return "idle";
@@ -32,30 +80,35 @@ void ring_set_state(const char *state) {
     if (strcmp(state, "idle") == 0) {
         ring_state = RING_IDLE;
         eventlog_add("ring state idle");
+        ring_update_home_visual();
         return;
     }
 
     if (strcmp(state, "chat") == 0 || strcmp(state, "open") == 0) {
         ring_state = RING_CHAT;
         eventlog_add("ring state chat");
+        ring_update_home_visual();
         return;
     }
 
     if (strcmp(state, "listen") == 0 || strcmp(state, "listening") == 0) {
         ring_state = RING_LISTENING;
         eventlog_add("ring state listening");
+        ring_update_home_visual();
         return;
     }
 
     if (strcmp(state, "think") == 0 || strcmp(state, "thinking") == 0) {
         ring_state = RING_THINKING;
         eventlog_add("ring state thinking");
+        ring_update_home_visual();
         return;
     }
 
     if (strcmp(state, "dock") == 0 || strcmp(state, "docked") == 0) {
         ring_state = RING_DOCKED;
         eventlog_add("ring state docked");
+        ring_update_home_visual();
         return;
     }
 }
@@ -106,6 +159,21 @@ int ring_handle_command(const char *command) {
         return 1;
     }
 
+    if (strcmp(command, "home") == 0) {
+        ring_update_home_visual();
+
+        if (workspace_builder_open("/workspaces/home.workspace")) {
+            return 1;
+        }
+
+        if (workspace_builder_open("home.workspace")) {
+            return 1;
+        }
+
+        kprintf("Ring: home open failed\n");
+        return 0;
+    }
+
     if (strcmp(command, "idle") == 0 ||
         strcmp(command, "chat") == 0 ||
         strcmp(command, "open") == 0 ||
@@ -137,13 +205,14 @@ int ring_chat(const char *text) {
     kprintf("AI: %s\n", text);
     kprintf("Ring: thinking\n");
 
+    ring_set_state("docked");
+    kprintf("Ring: docked\n");
+
     if (!intent_handle(text)) {
         kprintf("AI: intent failed\n");
         ring_set_state("chat");
         return 0;
     }
 
-    ring_set_state("docked");
-    kprintf("Ring: docked\n");
     return 1;
 }

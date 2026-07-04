@@ -1,5 +1,17 @@
 # LOS Changelog
 
+## LOS v20.30a
+- Made Home workspace opening robust through direct workspace_builder_open fallback
+- Fixed ring home to open Home directly instead of silently relying on service open
+- Added visible Home/Ring open failure messages
+
+## LOS v20.30
+- Home now opens existing workspace instead of regenerating it every time
+- Added persistent Home behavior for mutated widgets
+- AI Ring state now updates the AI Ring block inside Home workspace
+- chat flow docks the ring before opening/mutating the workspace
+- Added ring home command to refresh/open Home with current ring state
+
 ## LOS v20.29a
 - Fixed Home workspace template block escaping
 - Fixed multiline widget content to use escaped workspace newlines

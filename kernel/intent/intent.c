@@ -171,12 +171,29 @@ static int intent_workspace_kind(const char *text, const char *kind, const char 
 }
 
 
-static int intent_open_home_after_mutation(void) {
-    if (service_call("workspace", "open", "/workspaces/home.workspace")) {
+static int intent_home_open(void) {
+    if (workspace_builder_open("/workspaces/home.workspace")) {
         return 1;
     }
 
-    return service_call("workspace", "open", "home.workspace");
+    if (workspace_builder_open("home.workspace")) {
+        return 1;
+    }
+
+    return intent_workspace_template("home", "/workspaces/home.workspace", 1);
+}
+
+static int intent_open_home_after_mutation(void) {
+    if (workspace_builder_open("/workspaces/home.workspace")) {
+        return 1;
+    }
+
+    if (workspace_builder_open("home.workspace")) {
+        return 1;
+    }
+
+    kprintf("Home: open failed\n");
+    return 0;
 }
 
 static int intent_ensure_home_workspace(void) {
@@ -370,23 +387,23 @@ int intent_handle(const char *text) {
     }
 
     if (strcmp(text, "home") == 0) {
-        return intent_workspace_template("home", "/workspaces/home.workspace", 1);
+        return intent_home_open();
     }
 
     if (strcmp(text, "open home") == 0) {
-        return intent_workspace_template("home", "/workspaces/home.workspace", 1);
+        return intent_home_open();
     }
 
     if (strcmp(text, "start los") == 0) {
-        return intent_workspace_template("home", "/workspaces/home.workspace", 1);
+        return intent_home_open();
     }
 
     if (strcmp(text, "ai home") == 0) {
-        return intent_workspace_template("home", "/workspaces/home.workspace", 1);
+        return intent_home_open();
     }
 
     if (strcmp(text, "main screen") == 0) {
-        return intent_workspace_template("home", "/workspaces/home.workspace", 1);
+        return intent_home_open();
     }
 
     if (strcmp(text, "debug build error") == 0) {

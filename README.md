@@ -633,3 +633,18 @@ Examples:
     chat "remove logs panel"
 
 This is the first MVP step toward AI changing the screen while the user works.
+
+
+## Persistent Home workspace
+
+The Home workspace is now persistent.
+
+The `home` command opens the existing Home workspace when it exists, instead of always regenerating it.
+
+This preserves AI mutations such as:
+
+    chat "add weather"
+    chat "add checklist"
+    chat "add logs panel"
+
+The AI Ring state is also reflected in the `AI Ring` block on Home.
