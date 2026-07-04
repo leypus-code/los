@@ -1,5 +1,12 @@
 # LOS Changelog
 
+## LOS v22.6
+- Added multi-screen workspace runtime
+- Added screen1 for Chat Screen and screen2 for Home/Dashboard
+- Added screens, nextscreen, and prevscreen commands
+- User mode now opens screen1 through the screen runtime
+- This is the first step toward multiple AI-managed screens instead of one modal workspace
+
 ## LOS v22.5a
 - Added visible OK confirmations for UI patch operations
 - replace_block patches on Chat Screen now reopen Chat Screen automatically

@@ -99,6 +99,41 @@ static void shell_unknown_or_ai(const char *command) {
 }
 
 
+
+static int shell_active_screen = 1;
+
+static void shell_screen_show_status(void) {
+    kprintf("LOS Screens\n");
+    kprintf("%s screen1: Chat Screen\n", shell_active_screen == 1 ? "*" : " ");
+    kprintf("%s screen2: Home / Dashboard\n", shell_active_screen == 2 ? "*" : " ");
+    kprintf("Commands: screen1, screen2, nextscreen, prevscreen\n");
+}
+
+static void shell_open_screen1(void) {
+    shell_active_screen = 1;
+    ai_bridge_context_set_workspace("Chat Screen");
+    intent_handle("chat screen");
+}
+
+static void shell_open_screen2(void) {
+    shell_active_screen = 2;
+    ai_bridge_context_set_workspace("Home");
+    intent_handle("home");
+}
+
+static void shell_next_screen(void) {
+    if (shell_active_screen == 1) {
+        shell_open_screen2();
+    } else {
+        shell_open_screen1();
+    }
+}
+
+static void shell_prev_screen(void) {
+    shell_next_screen();
+}
+
+
 static int shell_boot_chat_screen_enabled = 1;
 
 static void shell_open_boot_chat_screen(void) {
@@ -224,7 +259,7 @@ static void shell_print_history(void) {
 
 
 static const char *completion_commands[] = {
-    "help", "commands", "history", "dev", "user", "home", "screen", "chatui", "chatreset", "bootui", "resetui", "resethome", "resetchat", "clear", "version", "uptime", "time", "date", "clock",
+    "help", "commands", "history", "screens", "screen1", "screen2", "nextscreen", "prevscreen", "dev", "user", "home", "screen", "chatui", "chatreset", "bootui", "resetui", "resethome", "resetchat", "clear", "version", "uptime", "time", "date", "clock",
     "echo", "pwd", "uname", "whoami", "hostname", "true", "false",
     "ls", "tree", "cd", "cat", "write", "mkdir", "touch", "rm", "rename", "cp", "mv",
     "nano", "edit", "nc", "wm", "currentapp",
@@ -2357,7 +2392,22 @@ static void shell_execute(const char *command) {
     } else if (strcmp(command, "user") == 0) {
         shell_set_ai_input_mode(1);
         shell_ok("User mode: AI input enabled");
-        intent_handle("chat screen");
+        shell_open_screen1();
+        return;
+    } else if (strcmp(command, "screens") == 0) {
+        shell_screen_show_status();
+        return;
+    } else if (strcmp(command, "screen1") == 0) {
+        shell_open_screen1();
+        return;
+    } else if (strcmp(command, "screen2") == 0) {
+        shell_open_screen2();
+        return;
+    } else if (strcmp(command, "nextscreen") == 0) {
+        shell_next_screen();
+        return;
+    } else if (strcmp(command, "prevscreen") == 0) {
+        shell_prev_screen();
         return;
     } else if (strcmp(command, "history") == 0) {
         shell_print_history();
