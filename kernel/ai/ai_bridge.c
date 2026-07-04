@@ -4,8 +4,309 @@
 #include "../include/string.h"
 #include "../include/intent.h"
 #include "../include/ring.h"
+
+static int ai_bridge_starts_with(const char *s, const char *prefix);
+static void ai_bridge_send_prompt(const char *prompt);
+static int ai_bridge_read_line(char *out, int max);
+static int ai_bridge_strip_named_prefix(char *line, const char *prefix, char *out, int max);
+static int ai_bridge_strip_prefix(char *line, char *out, int max);
+static void ai_bridge_update_web_widget(const char *query, const char *answer);
+static void ai_bridge_update_chat_widget(const char *query, const char *answer);
+static void ai_bridge_open_chat_after_result(void);
+
 #include "../include/workspace_builder.h"
 #include "../include/service.h"
+
+
+#define CHAT_TRANSCRIPT_COUNT 8
+#define CHAT_TRANSCRIPT_LEN   128
+
+static char chat_transcript[CHAT_TRANSCRIPT_COUNT][CHAT_TRANSCRIPT_LEN];
+static int chat_transcript_count = 0;
+static char chat_last_user[96];
+
+static void ai_bridge_copy_safe(char *dst, const char *src, int max) {
+    int i = 0;
+
+    if (!dst || max <= 0) return;
+
+    if (!src) {
+        dst[0] = '\0';
+        return;
+    }
+
+    while (src[i] && i < max - 1) {
+        char c = src[i];
+
+        if (c == '\n' || c == '\r') c = ' ';
+        if (c == '|') c = '/';
+
+        dst[i] = c;
+        i++;
+    }
+
+    dst[i] = '\0';
+}
+
+static void ai_bridge_chat_add_line(const char *prefix, const char *text) {
+    int slot = chat_transcript_count % CHAT_TRANSCRIPT_COUNT;
+    int pos = 0;
+
+    if (!prefix) prefix = "";
+    if (!text) text = "";
+
+    for (int i = 0; prefix[i] && pos < CHAT_TRANSCRIPT_LEN - 1; i++) {
+        chat_transcript[slot][pos++] = prefix[i];
+    }
+
+    for (int i = 0; text[i] && pos < CHAT_TRANSCRIPT_LEN - 1; i++) {
+        char c = text[i];
+
+        if (c == '\n' || c == '\r') c = ' ';
+        if (c == '|') c = '/';
+
+        chat_transcript[slot][pos++] = c;
+    }
+
+    chat_transcript[slot][pos] = '\0';
+    chat_transcript_count++;
+}
+
+static const char *ai_bridge_chat_transcript_content(void) {
+    static char out[768];
+    int pos = 0;
+    int start = chat_transcript_count - CHAT_TRANSCRIPT_COUNT;
+
+    if (start < 0) start = 0;
+
+    if (chat_transcript_count == 0) {
+        ai_bridge_copy_safe(out, "No conversation yet.\\nUse talk \"what is docker\"", 768);
+        return out;
+    }
+
+    for (int i = start; i < chat_transcript_count; i++) {
+        int slot = i % CHAT_TRANSCRIPT_COUNT;
+
+        for (int x = 0; chat_transcript[slot][x] && pos < 767; x++) {
+            out[pos++] = chat_transcript[slot][x];
+        }
+
+        if (i != chat_transcript_count - 1 && pos < 766) {
+            out[pos++] = '\\';
+            out[pos++] = 'n';
+        }
+    }
+
+    out[pos] = '\0';
+    return out;
+}
+
+static int ai_bridge_chat_last_is_thinking(void) {
+    if (chat_transcript_count <= 0) {
+        return 0;
+    }
+
+    int slot = (chat_transcript_count - 1) % CHAT_TRANSCRIPT_COUNT;
+
+    return strcmp(chat_transcript[slot], "AI: thinking...") == 0;
+}
+
+static void ai_bridge_chat_replace_last_ai(const char *answer) {
+    int slot = 0;
+    int pos = 0;
+    const char *prefix = "AI: ";
+
+    if (chat_transcript_count <= 0) {
+        return;
+    }
+
+    if (!answer) {
+        answer = "";
+    }
+
+    slot = (chat_transcript_count - 1) % CHAT_TRANSCRIPT_COUNT;
+
+    for (int i = 0; prefix[i] && pos < CHAT_TRANSCRIPT_LEN - 1; i++) {
+        chat_transcript[slot][pos++] = prefix[i];
+    }
+
+    for (int i = 0; answer[i] && pos < CHAT_TRANSCRIPT_LEN - 1; i++) {
+        char c = answer[i];
+
+        if (c == '\n' || c == '\r') c = ' ';
+        if (c == '|') c = '/';
+
+        chat_transcript[slot][pos++] = c;
+    }
+
+    chat_transcript[slot][pos] = '\0';
+}
+
+static void ai_bridge_chat_remember(const char *query, const char *answer) {
+    if (!query) query = "";
+    if (!answer) answer = "";
+
+    if (strcmp(answer, "thinking...") == 0) {
+        ai_bridge_chat_add_line("User: ", query);
+        ai_bridge_chat_add_line("AI: ", "thinking...");
+        ai_bridge_copy_safe(chat_last_user, query, 96);
+        return;
+    }
+
+    /*
+     * If the previous line is AI: thinking... for the same user input,
+     * replace it with the final AI answer instead of appending another AI line.
+     */
+    if (strcmp(chat_last_user, query) == 0 && ai_bridge_chat_last_is_thinking()) {
+        ai_bridge_chat_replace_last_ai(answer);
+        return;
+    }
+
+    if (strcmp(chat_last_user, query) != 0) {
+        ai_bridge_chat_add_line("User: ", query);
+        ai_bridge_copy_safe(chat_last_user, query, 96);
+    }
+
+    ai_bridge_chat_add_line("AI: ", answer);
+}
+
+
+static void ai_bridge_update_chat_widget(const char *query, const char *answer) {
+    char content[512];
+    char input_content[256];
+    int pos = 0;
+    int ipos = 0;
+    int updated = 0;
+
+    if (!query) query = "";
+    if (!answer) answer = "";
+
+    ai_bridge_chat_remember(query, answer);
+
+    /*
+     * Compact one-line result for the small Last Tool Result block.
+     */
+    for (int i = 0; query[i] && pos < 511; i++) {
+        char c = query[i];
+
+        if (c == '\n' || c == '\r') c = ' ';
+        if (c == '|') c = '/';
+
+        content[pos++] = c;
+    }
+
+    if (pos < 508) {
+        content[pos++] = ' ';
+        content[pos++] = '=';
+        content[pos++] = '>';
+        content[pos++] = ' ';
+    }
+
+    for (int i = 0; answer[i] && pos < 511; i++) {
+        char c = answer[i];
+
+        if (c == '\n' || c == '\r') c = ' ';
+        if (c == '|') c = '/';
+
+        content[pos++] = c;
+    }
+
+    content[pos] = '\0';
+
+    /*
+     * Center Input shows current/last typed phrase.
+     */
+    const char *input_prefix = "Last input: ";
+    for (int i = 0; input_prefix[i] && ipos < 255; i++) {
+        input_content[ipos++] = input_prefix[i];
+    }
+
+    for (int i = 0; query[i] && ipos < 255; i++) {
+        char c = query[i];
+
+        if (c == '\n' || c == '\r') c = ' ';
+        if (c == '|') c = '/';
+
+        input_content[ipos++] = c;
+    }
+
+    input_content[ipos] = '\0';
+
+    if (!workspace_builder_replace_block(
+            "/workspaces/chat.workspace",
+            "Last Tool Result",
+            "text",
+            "Last Tool Result",
+            content
+        )) {
+        service_call("workspace", "template", "chat /workspaces/chat.workspace");
+
+        updated = workspace_builder_replace_block(
+            "/workspaces/chat.workspace",
+            "Last Tool Result",
+            "text",
+            "Last Tool Result",
+            content
+        );
+    } else {
+        updated = 1;
+    }
+
+    if (!updated) {
+        updated = workspace_builder_replace_block(
+            "/workspaces/chat.workspace",
+            "Tool Result",
+            "text",
+            "Last Tool Result",
+            content
+        );
+    }
+
+    if (!updated) {
+        updated = workspace_builder_replace_block(
+            "/workspaces/chat.workspace",
+            "Web Result",
+            "text",
+            "Last Tool Result",
+            content
+        );
+    }
+
+    workspace_builder_replace_block(
+        "/workspaces/chat.workspace",
+        "Center Input",
+        "ai",
+        "Center Input",
+        input_content
+    );
+
+    workspace_builder_replace_block(
+        "/workspaces/chat.workspace",
+        "Conversation",
+        "text",
+        "Conversation",
+        ai_bridge_chat_transcript_content()
+    );
+
+    if (updated) {
+        kprintf("Chat Screen: result updated\n");
+        ring_log_operation("chat screen: result updated");
+    } else {
+        kprintf("Chat Screen: result update failed\n");
+        ring_log_operation("chat screen: result update failed");
+    }
+}
+
+static void ai_bridge_open_chat_after_result(void) {
+    if (workspace_builder_open("/workspaces/chat.workspace")) {
+        return;
+    }
+
+    workspace_builder_open("chat.workspace");
+}
+
+
+
 
 static int ai_bridge_starts_with(const char *s, const char *prefix) {
     int i = 0;
@@ -95,28 +396,28 @@ static void ai_bridge_update_web_widget(const char *query, const char *answer) {
     if (!query) query = "";
     if (!answer) answer = "";
 
-    const char *q = "";
-    const char *sep = " => ";
-
-    for (int i = 0; q[i] && pos < 511; i++) {
-        content[pos++] = q[i];
-    }
-
     for (int i = 0; query[i] && pos < 511; i++) {
         char c = query[i];
+
         if (c == '\n' || c == '\r') c = ' ';
         if (c == '|') c = '/';
+
         content[pos++] = c;
     }
 
-    for (int i = 0; sep[i] && pos < 511; i++) {
-        content[pos++] = sep[i];
+    if (pos < 508) {
+        content[pos++] = ' ';
+        content[pos++] = '=';
+        content[pos++] = '>';
+        content[pos++] = ' ';
     }
 
     for (int i = 0; answer[i] && pos < 511; i++) {
         char c = answer[i];
+
         if (c == '\n' || c == '\r') c = ' ';
         if (c == '|') c = '/';
+
         content[pos++] = c;
     }
 
@@ -172,125 +473,6 @@ static void ai_bridge_update_web_widget(const char *query, const char *answer) {
         content
     );
 }
-
-static void ai_bridge_open_home_after_web(void) {
-    if (workspace_builder_open("/workspaces/home.workspace")) {
-        return;
-    }
-
-    workspace_builder_open("home.workspace");
-}
-
-static void ai_bridge_update_chat_widget(const char *query, const char *answer) {
-    char content[512];
-    int pos = 0;
-    int updated = 0;
-
-    if (!query) query = "";
-    if (!answer) answer = "";
-
-    const char *q = "";
-    const char *sep = " => ";
-
-    for (int i = 0; q[i] && pos < 511; i++) {
-        content[pos++] = q[i];
-    }
-
-    for (int i = 0; query[i] && pos < 511; i++) {
-        char c = query[i];
-
-        if (c == '\n' || c == '\r') c = ' ';
-        if (c == '|') c = '/';
-
-        content[pos++] = c;
-    }
-
-    for (int i = 0; sep[i] && pos < 511; i++) {
-        content[pos++] = sep[i];
-    }
-
-    for (int i = 0; answer[i] && pos < 511; i++) {
-        char c = answer[i];
-
-        if (c == '\n' || c == '\r') c = ' ';
-        if (c == '|') c = '/';
-
-        content[pos++] = c;
-    }
-
-    content[pos] = '\0';
-
-    /*
-     * Important:
-     * Do NOT blindly regenerate chat.workspace here.
-     * If the file already exists, patch it.
-     * If it does not exist yet, create it once.
-     */
-    if (!workspace_builder_replace_block(
-            "/workspaces/chat.workspace",
-            "Last Tool Result",
-            "text",
-            "Last Tool Result",
-            content
-        )) {
-        service_call("workspace", "template", "chat /workspaces/chat.workspace");
-
-        updated = workspace_builder_replace_block(
-            "/workspaces/chat.workspace",
-            "Last Tool Result",
-            "text",
-            "Last Tool Result",
-            content
-        );
-    } else {
-        updated = 1;
-    }
-
-    if (!updated) {
-        updated = workspace_builder_replace_block(
-            "/workspaces/chat.workspace",
-            "Tool Result",
-            "text",
-            "Last Tool Result",
-            content
-        );
-    }
-
-    if (!updated) {
-        updated = workspace_builder_replace_block(
-            "/workspaces/chat.workspace",
-            "Web Result",
-            "text",
-            "Last Tool Result",
-            content
-        );
-    }
-
-    workspace_builder_replace_block(
-        "/workspaces/chat.workspace",
-        "Conversation",
-        "text",
-        "Conversation",
-        content
-    );
-
-    if (updated) {
-        kprintf("Chat Screen: result updated\n");
-        ring_log_operation("chat screen: result updated");
-    } else {
-        kprintf("Chat Screen: result update failed\n");
-        ring_log_operation("chat screen: result update failed");
-    }
-}
-
-static void ai_bridge_open_chat_after_result(void) {
-    if (workspace_builder_open("/workspaces/chat.workspace")) {
-        return;
-    }
-
-    workspace_builder_open("chat.workspace");
-}
-
 
 
 int ai_bridge_ask(const char *prompt, char *out, int max) {
@@ -417,5 +599,27 @@ int ai_bridge_talk(const char *text) {
 
     ring_set_state("docked");
     return 1;
+}
+
+
+
+void ai_bridge_show_transcript(void) {
+    int start = chat_transcript_count - CHAT_TRANSCRIPT_COUNT;
+
+    if (start < 0) {
+        start = 0;
+    }
+
+    kprintf("Chat Transcript\n");
+
+    if (chat_transcript_count == 0) {
+        kprintf("No conversation yet.\n");
+        return;
+    }
+
+    for (int i = start; i < chat_transcript_count; i++) {
+        int slot = i % CHAT_TRANSCRIPT_COUNT;
+        kprintf("%s\n", chat_transcript[slot]);
+    }
 }
 

@@ -1,5 +1,24 @@
 # LOS Changelog
 
+## LOS v21.8b
+- Disabled automatic startup.los execution during boot
+- startup.los remains available through the manual startup command
+- Boot now opens Chat Screen directly without script blocking risk
+- This prevents LOS from hanging at [INFO] Running script during boot
+
+## LOS v21.8a
+- Fixed transcript shell output printing escaped newline markers
+- transcript now prints chat history line by line
+- Final AI answers now replace temporary AI: thinking... lines
+- Cleaned transcript workspace generation helper
+
+## LOS v21.8
+- Added in-memory Chat Screen transcript
+- Conversation block now shows recent user/AI turns instead of only last result
+- Center Input now shows the last user input
+- Added transcript shell command for debugging chat history
+- This makes talk feel like an actual chat loop
+
 ## LOS v21.7a
 - Fixed talk flow opening Chat Screen before bridge/model execution
 - talk now updates chat workspace with thinking state, executes AI/tool routing, then opens final result screen

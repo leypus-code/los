@@ -1995,7 +1995,7 @@ static const char *command_lines[] = {
     "Themes: themes theme theme list theme next theme prev theme <name>",
     "Workspaces: workspaces open mkworkspace workspace workstatus wsblocks wsremove wsreplace wsaction wstemplate wstitle wsadd wsbutton wsnode wsend",
     "Scripts: run run -v startup",
-    "AI/Services: talk ask web ring chat ops intent gentask tasks tasklist taskshow tasklog taskopen taskstatus tasknext taskreopen taskdone ai aistatus services service apps runapp handlers",
+    "AI/Services: talk transcript ask web ring chat ops intent gentask tasks tasklist taskshow tasklog taskopen taskstatus tasknext taskreopen taskdone ai aistatus services service apps runapp handlers",
     "Models/Packages: models modelstatus importmodel loadmodel packages install remove formats load",
     "Kernel/Debug: mem pages paging kmalloc kfree allocpage freepage ps newtask current schedule dmesg kbd panic",
     "Scrollback: scrollup scrolldown top bottom PageUp PageDown",
@@ -3835,6 +3835,10 @@ static void shell_execute(const char *command) {
 
         return;
 
+    } else if (strcmp(command, "transcript") == 0) {
+        ai_bridge_show_transcript();
+        return;
+
     } else if (
         command[0] == 't' &&
         command[1] == 'a' &&
@@ -4147,12 +4151,16 @@ void shell_initialize(void) {
     terminal_writestring("Type 'help' to see commands. Startup: /scripts/startup.los");
     terminal_writestring("\n");
 
-    vfs_node_t *startup = vfs_resolve(shell_cwd, "/scripts/startup.los");
-
-    if (startup && startup->type == VFS_FILE) {
-        shell_execute("run /scripts/startup.los");
-        shell_open_boot_chat_screen();
-    }
+    /*
+     * User-mode boot:
+     * Do not auto-run startup.los here.
+     *
+     * startup.los is still available through the manual `startup` command,
+     * but boot must never block on scripts, bridge calls, UI commands,
+     * or workspace actions.
+     */
+    shell_info("Startup script auto-run skipped");
+    shell_open_boot_chat_screen();
 
     shell_prompt_newline();
 }
