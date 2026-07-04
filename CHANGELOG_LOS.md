@@ -1,5 +1,12 @@
 # LOS Changelog
 
+## LOS v23.0b
+- Added Multiboot2 tag parser
+- Kernel now scans bootloader tags for framebuffer information
+- Added framebuffer state getters
+- Added gfxinfo shell command
+- This prepares LOS for requesting and drawing into a real framebuffer
+
 ## LOS v23.0a
 - Added Multiboot2 handoff from boot.S to kernel_main
 - Kernel now stores Multiboot2 magic and info structure address

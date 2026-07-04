@@ -313,7 +313,7 @@ static void shell_print_history(void) {
 
 
 static const char *completion_commands[] = {
-    "help", "commands", "history", "mbi", "mbi", "screens", "screen0", "pixels", "bootscreen", "screen1", "screen2", "nextscreen", "prevscreen", "dev", "user", "home", "screen", "chatui", "chatreset", "bootui", "resetui", "resethome", "resetchat", "clear", "version", "uptime", "time", "date", "clock",
+    "help", "commands", "history", "mbi", "gfxinfo", "mbi", "screens", "screen0", "pixels", "bootscreen", "screen1", "screen2", "nextscreen", "prevscreen", "dev", "user", "home", "screen", "chatui", "chatreset", "bootui", "resetui", "resethome", "resetchat", "clear", "version", "uptime", "time", "date", "clock",
     "echo", "pwd", "uname", "whoami", "hostname", "true", "false",
     "ls", "tree", "cd", "cat", "write", "mkdir", "touch", "rm", "rename", "cp", "mv",
     "nano", "edit", "nc", "wm", "currentapp",
@@ -880,6 +880,7 @@ static const char *help_lines[] = {
     "  clear                 Clear screen with active theme",
     "  version               Show LOS version",
     "  mbi                   Show Multiboot2 boot info",
+    "  gfxinfo               Show framebuffer info",
     "  uptime                Show timer ticks",
     "  time                  Show RTC time",
     "  date                  Show RTC date",
@@ -2482,6 +2483,25 @@ static void shell_execute(const char *command) {
             kprintf("status: invalid magic\n");
         }
 
+        return;
+    } else if (strcmp(command, "gfxinfo") == 0) {
+        kprintf("Framebuffer\n");
+
+        if (!kernel_framebuffer_available()) {
+            kprintf("status: not found\n");
+            kprintf("hint: framebuffer tag is not present yet\n");
+            kprintf("next: request framebuffer in Multiboot2 header\n");
+            return;
+        }
+
+        kprintf("status: found\n");
+        kprintf("addr_hi: 0x%x\n", kernel_framebuffer_addr_high());
+        kprintf("addr_lo: 0x%x\n", kernel_framebuffer_addr_low());
+        kprintf("width:   %u\n", kernel_framebuffer_width());
+        kprintf("height:  %u\n", kernel_framebuffer_height());
+        kprintf("pitch:   %u\n", kernel_framebuffer_pitch());
+        kprintf("bpp:     %u\n", kernel_framebuffer_bpp());
+        kprintf("type:    %u\n", kernel_framebuffer_type());
         return;
     } else if (strcmp(command, "history") == 0) {
         shell_print_history();

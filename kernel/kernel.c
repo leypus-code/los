@@ -49,6 +49,99 @@ uint32_t kernel_get_boot_mbi_addr(void) {
     return kernel_boot_mbi_addr;
 }
 
+
+static int kernel_fb_found = 0;
+static uint32_t kernel_fb_addr_low = 0;
+static uint32_t kernel_fb_addr_high = 0;
+static uint32_t kernel_fb_pitch = 0;
+static uint32_t kernel_fb_width = 0;
+static uint32_t kernel_fb_height = 0;
+static uint32_t kernel_fb_bpp = 0;
+static uint32_t kernel_fb_type = 0;
+
+static uint32_t kernel_align8(uint32_t value) {
+    return (value + 7) & ~7;
+}
+
+void kernel_multiboot_parse(void) {
+    uint32_t total_size = 0;
+    uint32_t ptr = 0;
+    uint32_t end = 0;
+
+    kernel_fb_found = 0;
+
+    if (kernel_boot_magic != MULTIBOOT2_BOOTLOADER_MAGIC) {
+        return;
+    }
+
+    if (!kernel_boot_mbi_addr) {
+        return;
+    }
+
+    total_size = *((uint32_t *)kernel_boot_mbi_addr);
+    ptr = kernel_boot_mbi_addr + 8;
+    end = kernel_boot_mbi_addr + total_size;
+
+    while (ptr + sizeof(multiboot_tag_t) <= end) {
+        multiboot_tag_t *tag = (multiboot_tag_t *)ptr;
+
+        if (tag->type == MULTIBOOT_TAG_TYPE_END) {
+            break;
+        }
+
+        if (tag->size < sizeof(multiboot_tag_t)) {
+            break;
+        }
+
+        if (tag->type == MULTIBOOT_TAG_TYPE_FRAMEBUFFER) {
+            multiboot_tag_framebuffer_t *fb = (multiboot_tag_framebuffer_t *)ptr;
+
+            kernel_fb_addr_low = (uint32_t)(fb->framebuffer_addr & 0xffffffff);
+            kernel_fb_addr_high = (uint32_t)(fb->framebuffer_addr >> 32);
+            kernel_fb_pitch = fb->framebuffer_pitch;
+            kernel_fb_width = fb->framebuffer_width;
+            kernel_fb_height = fb->framebuffer_height;
+            kernel_fb_bpp = fb->framebuffer_bpp;
+            kernel_fb_type = fb->framebuffer_type;
+            kernel_fb_found = 1;
+        }
+
+        ptr += kernel_align8(tag->size);
+    }
+}
+
+int kernel_framebuffer_available(void) {
+    return kernel_fb_found;
+}
+
+uint32_t kernel_framebuffer_addr_low(void) {
+    return kernel_fb_addr_low;
+}
+
+uint32_t kernel_framebuffer_addr_high(void) {
+    return kernel_fb_addr_high;
+}
+
+uint32_t kernel_framebuffer_pitch(void) {
+    return kernel_fb_pitch;
+}
+
+uint32_t kernel_framebuffer_width(void) {
+    return kernel_fb_width;
+}
+
+uint32_t kernel_framebuffer_height(void) {
+    return kernel_fb_height;
+}
+
+uint32_t kernel_framebuffer_bpp(void) {
+    return kernel_fb_bpp;
+}
+
+uint32_t kernel_framebuffer_type(void) {
+    return kernel_fb_type;
+}
+
 void kernel_panic(const char *message) {
     kprintf("\n\n[KERNEL PANIC] %s\nSystem halted.\n", message);
 
@@ -66,6 +159,14 @@ void kernel_init(void) {
     theme_print_banner();
 
     log_ok("Kernel entered");
+
+    log_info("Parsing Multiboot2 information...");
+    kernel_multiboot_parse();
+    if (kernel_framebuffer_available()) {
+        log_ok("Framebuffer information found");
+    } else {
+        log_info("Framebuffer information not available yet");
+    }
 
     log_info("Initializing GDT...");
     gdt_initialize();
