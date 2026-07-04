@@ -107,7 +107,7 @@ def mock_route(prompt: str) -> str:
         return "add logs panel"
     if "code" in p or "coding" in p or "developer" in p or "код" in p:
         return "coding mode"
-    if "blank" in p or "empty" in p or "пуст" in p:
+    if "blank" in p or "empty" in p or "canvas" in p or "пуст" in p:
         return "blank canvas"
     if "debug" in p or "build" in p or "ошиб" in p:
         return "debug build error"

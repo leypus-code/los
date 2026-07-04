@@ -1,5 +1,11 @@
 # LOS Changelog
 
+## LOS v21.9
+- Added Chat Screen quick actions for Docker, Weather, Dashboard, Coding, Blank Canvas, Home, and Transcript
+- Chat Screen now works better as the default user-facing UI after boot
+- Added chatreset command to regenerate and open Chat Screen
+- Updated Chat Screen instructions for Tab/Enter usage and talk shell input
+
 ## LOS v21.8b
 - Disabled automatic startup.los execution during boot
 - startup.los remains available through the manual startup command

@@ -198,7 +198,7 @@ static void shell_print_history(void) {
 
 
 static const char *completion_commands[] = {
-    "help", "commands", "history", "home", "screen", "chatui", "bootui", "resetui", "resethome", "resetchat", "clear", "version", "uptime", "time", "date", "clock",
+    "help", "commands", "history", "home", "screen", "chatui", "chatreset", "bootui", "resetui", "resethome", "resetchat", "clear", "version", "uptime", "time", "date", "clock",
     "echo", "pwd", "uname", "whoami", "hostname", "true", "false",
     "ls", "tree", "cd", "cat", "write", "mkdir", "touch", "rm", "rename", "cp", "mv",
     "nano", "edit", "nc", "wm", "currentapp",
@@ -2326,6 +2326,11 @@ static void shell_execute(const char *command) {
         return;
     } else if (strcmp(command, "history") == 0) {
         shell_print_history();
+        return;
+    } else if (strcmp(command, "chatreset") == 0) {
+        service_call("workspace", "template", "chat /workspaces/chat.workspace");
+        shell_ok("Chat Screen reset");
+        intent_handle("chat screen");
         return;
     } else if (strcmp(command, "resetui") == 0) {
         service_call("workspace", "template", "home /workspaces/home.workspace");

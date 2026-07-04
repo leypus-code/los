@@ -939,15 +939,15 @@ int workspace_builder_template(const char *kind, const char *name) {
             "NODE=root|vertical|1\n"
 
             "NODE=row|horizontal|1\n"
-            "BLOCK=ai|Center Input|Ask anything.\\nExamples:\\nask \"make dashboard\"\\nask \"what is docker\"\\nask \"weather in Vienna\"\n"
+            "BLOCK=ai|Center Input|AI input is ready.\\nUse Tab/Enter quick actions below.\\nPress Q for developer shell.\\nShell input: talk \"what is docker\"\n"
             "END\n"
 
             "NODE=row|horizontal|1\n"
-            "BLOCK=text|Conversation|User input appears here.\\nAI routes to screen modes, workspaces, or web tools.\n"
+            "BLOCK=text|Conversation|No conversation yet.\\nUse quick actions or type talk commands from shell.\n"
             "END\n"
 
             "NODE=row|horizontal|1\n"
-            "BLOCK=text|Last Tool Result|No tool result yet.\\nTalk to LOS. The AI can change screens or use web tools.\n"
+            "BLOCK=text|Last Tool Result|No tool result yet.\\nAsk a web question or request a workspace.\n"
             "END\n"
 
             "NODE=row|horizontal|2\n"
@@ -956,13 +956,23 @@ int workspace_builder_template(const char *kind, const char *name) {
             "END\n"
 
             "NODE=row|horizontal|2\n"
+            "BLOCK=button|Ask Docker|What is Docker?|shell:talk \"what is docker\"\n"
+            "BLOCK=button|Weather|Weather Vienna|shell:talk \"weather in Vienna\"\n"
+            "END\n"
+
+            "NODE=row|horizontal|2\n"
             "BLOCK=button|Dashboard|Build Dashboard|shell:talk \"make me a dashboard\"\n"
             "BLOCK=button|Coding|Coding Mode|shell:talk \"switch to coding mode\"\n"
             "END\n"
 
             "NODE=row|horizontal|2\n"
-            "BLOCK=button|Weather|Weather Vienna|shell:talk \"weather in Vienna\"\n"
+            "BLOCK=button|Blank Canvas|Blank Canvas|shell:talk \"blank canvas\"\n"
+            "BLOCK=button|Reset UI|Reset UI|shell:resetui\n"
+            "END\n"
+
+            "NODE=row|horizontal|2\n"
             "BLOCK=button|Home|Open Home|shell:home\n"
+            "BLOCK=button|Transcript|Show Transcript|shell:transcript\n"
             "END\n"
 
             "END\n"
@@ -980,11 +990,11 @@ int workspace_builder_template(const char *kind, const char *name) {
             "NODE=root|vertical|1\n"
 
             "NODE=row|horizontal|1\n"
-            "BLOCK=ai|AI Ring|State machine:\\nidle -> chat -> thinking -> docked\\nUse: screen\\nUse: talk \"what is docker\"\n"
+            "BLOCK=ai|AI Ring|State machine:\\nidle -> chat -> thinking -> docked\\nUse: screen\\nChat Screen is the default UI\\nUse: talk \"what is docker\"\n"
             "END\n"
 
             "NODE=row|horizontal|2\n"
-            "BLOCK=text|Command Center|Examples:\\ntalk \"what is docker\"\\ntalk \"weather in Vienna\"\\ntalk \"make dashboard\"\\nchat \"coding mode\"\n"
+            "BLOCK=text|Command Center|Examples:\\nscreen\\ntalk \"what is docker\"\\ntalk \"weather in Vienna\"\\ntalk \"make dashboard\"\\nchat \"coding mode\"\n"
             "BLOCK=status|Workspace Engine|Mutable workspace documents: ready\\nTask files: ready\\nIntent engine: ready\\nHost bridge: ready\n"
             "END\n"
 
