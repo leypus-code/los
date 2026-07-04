@@ -147,7 +147,7 @@ static void shell_print_history(void) {
 
 
 static const char *completion_commands[] = {
-    "help", "commands", "history", "home", "clear", "version", "uptime", "time", "date", "clock",
+    "help", "commands", "history", "home", "screen", "chatui", "resetui", "resethome", "resetchat", "clear", "version", "uptime", "time", "date", "clock",
     "echo", "pwd", "uname", "whoami", "hostname", "true", "false",
     "ls", "tree", "cd", "cat", "write", "mkdir", "touch", "rm", "rename", "cp", "mv",
     "nano", "edit", "nc", "wm", "currentapp",
@@ -1936,7 +1936,7 @@ static int shell_echo_redirect_inline(const char *command) {
 
 
 static const char *command_lines[] = {
-    "Core: help commands history home clear version uptime time date clock",
+    "Core: help commands history home screen chatui clear version uptime time date clock",
     "Linux-like: echo pwd uname uname -a whoami hostname true false",
     "Redirects: echo text > file | echo text >> file",
     "Filesystem: ls tree cd cat write mkdir mkdir-p touch rm rm-r rename cp mv",
@@ -2264,6 +2264,22 @@ static void shell_execute(const char *command) {
         return;
     } else if (strcmp(command, "history") == 0) {
         shell_print_history();
+        return;
+    } else if (strcmp(command, "resetui") == 0) {
+        service_call("workspace", "template", "home /workspaces/home.workspace");
+        service_call("workspace", "template", "chat /workspaces/chat.workspace");
+        shell_ok("Home and Chat Screen reset");
+        return;
+    } else if (strcmp(command, "resethome") == 0) {
+        service_call("workspace", "template", "home /workspaces/home.workspace");
+        shell_ok("Home reset");
+        return;
+    } else if (strcmp(command, "resetchat") == 0) {
+        service_call("workspace", "template", "chat /workspaces/chat.workspace");
+        shell_ok("Chat Screen reset");
+        return;
+    } else if (strcmp(command, "screen") == 0 || strcmp(command, "chatui") == 0) {
+        intent_handle("chat screen");
         return;
     } else if (strcmp(command, "home") == 0 || strcmp(command, "los") == 0) {
         intent_handle("home");

@@ -932,28 +932,79 @@ int workspace_builder_template(const char *kind, const char *name) {
         return 1;
     }
 
+    if (strcmp(kind, "chat") == 0) {
+        vfs_write_file(file,
+            "WORKSPACE\n"
+            "TITLE=LOS Chat Screen\n"
+            "NODE=root|vertical|1\n"
+
+            "NODE=row|horizontal|1\n"
+            "BLOCK=ai|Center Input|Ask anything.\\nExamples:\\nask \"make dashboard\"\\nask \"what is docker\"\\nask \"weather in Vienna\"\n"
+            "END\n"
+
+            "NODE=row|horizontal|1\n"
+            "BLOCK=text|Conversation|User input appears here.\\nAI routes to screen modes, workspaces, or web tools.\n"
+            "END\n"
+
+            "NODE=row|horizontal|1\n"
+            "BLOCK=text|Last Tool Result|No tool result yet.\\nAsk a web question or request a workspace.\n"
+            "END\n"
+
+            "NODE=row|horizontal|2\n"
+            "BLOCK=status|AI Ring|State: idle\\nVisual: centered input bar\\nWaiting for the first thought\n"
+            "BLOCK=logs|AI Operations|No AI operations yet\n"
+            "END\n"
+
+            "NODE=row|horizontal|2\n"
+            "BLOCK=button|Dashboard|Build Dashboard|shell:ask \"make me a dashboard\"\n"
+            "BLOCK=button|Coding|Coding Mode|shell:ask \"switch to coding mode\"\n"
+            "END\n"
+
+            "NODE=row|horizontal|2\n"
+            "BLOCK=button|Weather|Weather Vienna|shell:ask \"weather in Vienna\"\n"
+            "BLOCK=button|Home|Open Home|shell:home\n"
+            "END\n"
+
+            "END\n"
+        );
+
+        workspace_write_task_file(name, "LOS Chat Screen", "open chat screen", "chat");
+        eventlog_add("chat screen workspace template created");
+        return 1;
+    }
+
     if (strcmp(kind, "home") == 0) {
         vfs_write_file(file,
             "WORKSPACE\n"
             "TITLE=LOS AI Home\n"
             "NODE=root|vertical|1\n"
 
-            "NODE=row|horizontal|3\n"
-            "BLOCK=ai|AI Ring|State machine:\\nidle -> chat -> thinking -> docked\\nUse: ring status\\nUse: chat \"debug build error\"\n"
-            "BLOCK=text|Command Center|Examples:\\nask \"what is docker\"\\nask \"weather in Vienna\"\\nask \"make dashboard\"\\nchat \"coding mode\"\n"
-            "BLOCK=status|Workspace Engine|Mutable workspace documents: ready\\nTask files: ready\\nIntent engine: ready\n"
+            "NODE=row|horizontal|1\n"
+            "BLOCK=ai|AI Ring|State machine:\\nidle -> chat -> thinking -> docked\\nUse: screen\\nUse: ask \"what is docker\"\n"
             "END\n"
 
-            "NODE=row|horizontal|3\n"
+            "NODE=row|horizontal|2\n"
+            "BLOCK=text|Command Center|Examples:\\nask \"what is docker\"\\nask \"weather in Vienna\"\\nask \"make dashboard\"\\nchat \"coding mode\"\n"
+            "BLOCK=status|Workspace Engine|Mutable workspace documents: ready\\nTask files: ready\\nIntent engine: ready\\nHost bridge: ready\n"
+            "END\n"
+
+            "NODE=row|horizontal|1\n"
+            "BLOCK=text|Web Result|Ask something from the web.\\nExample: ask \"what is docker\"\n"
+            "END\n"
+
+            "NODE=row|horizontal|2\n"
+            "BLOCK=list|Live Tasks|Use tasklist\\ntaskopen debug-build\\ntaskdone debug-build\n"
+            "BLOCK=logs|AI Operations|No AI operations yet\n"
+            "END\n"
+
+            "NODE=row|horizontal|2\n"
             "BLOCK=button|Debug Workspace|Create Debug Workspace|shell:chat \"debug build error\"\n"
             "BLOCK=button|System Overview|Create System Overview|shell:chat \"system overview\"\n"
-            "BLOCK=button|Notes Workspace|Create Notes Workspace|shell:chat \"write notes\"\n"
             "END\n"
 
-            "NODE=row|horizontal|3\n"
-            "BLOCK=list|Live Tasks|Use tasklist\\ntaskopen debug-build\\ntaskdone debug-build\n"
+            "NODE=row|horizontal|2\n"
+            "BLOCK=button|Notes Workspace|Create Notes Workspace|shell:chat \"write notes\"\n"
             "BLOCK=button|Project Plan|Create Project Plan|shell:chat \"plan project\"\n"
-            "BLOCK=text|Web Result|Ask something from the web.\\nExample: ask \"what is docker\"\n""BLOCK=logs|AI Operations|No AI operations yet\n"
             "END\n"
 
             "END\n"

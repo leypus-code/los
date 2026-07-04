@@ -652,3 +652,18 @@ Examples:
     web "what is linux"
 
 LOS receives the bridge response, writes it into the `Web Result` block, and opens Home.
+
+
+## LOS Chat Screen
+
+The `screen` / `chatui` command opens the user-facing AI chat screen.
+
+Examples:
+
+    screen
+    chatui
+    ask "what is docker"
+    ask "weather in Vienna"
+    ask "make dashboard"
+
+Bridge results update Chat Screen widgets, while Home remains the generated workspace.

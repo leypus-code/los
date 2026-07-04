@@ -95,8 +95,8 @@ static void ai_bridge_update_web_widget(const char *query, const char *answer) {
     if (!query) query = "";
     if (!answer) answer = "";
 
-    const char *q = "Query: ";
-    const char *sep = "\\nResult: ";
+    const char *q = "";
+    const char *sep = " => ";
 
     for (int i = 0; q[i] && pos < 511; i++) {
         content[pos++] = q[i];
@@ -181,6 +181,117 @@ static void ai_bridge_open_home_after_web(void) {
     workspace_builder_open("home.workspace");
 }
 
+static void ai_bridge_update_chat_widget(const char *query, const char *answer) {
+    char content[512];
+    int pos = 0;
+    int updated = 0;
+
+    if (!query) query = "";
+    if (!answer) answer = "";
+
+    const char *q = "";
+    const char *sep = " => ";
+
+    for (int i = 0; q[i] && pos < 511; i++) {
+        content[pos++] = q[i];
+    }
+
+    for (int i = 0; query[i] && pos < 511; i++) {
+        char c = query[i];
+
+        if (c == '\n' || c == '\r') c = ' ';
+        if (c == '|') c = '/';
+
+        content[pos++] = c;
+    }
+
+    for (int i = 0; sep[i] && pos < 511; i++) {
+        content[pos++] = sep[i];
+    }
+
+    for (int i = 0; answer[i] && pos < 511; i++) {
+        char c = answer[i];
+
+        if (c == '\n' || c == '\r') c = ' ';
+        if (c == '|') c = '/';
+
+        content[pos++] = c;
+    }
+
+    content[pos] = '\0';
+
+    /*
+     * Important:
+     * Do NOT blindly regenerate chat.workspace here.
+     * If the file already exists, patch it.
+     * If it does not exist yet, create it once.
+     */
+    if (!workspace_builder_replace_block(
+            "/workspaces/chat.workspace",
+            "Last Tool Result",
+            "text",
+            "Last Tool Result",
+            content
+        )) {
+        service_call("workspace", "template", "chat /workspaces/chat.workspace");
+
+        updated = workspace_builder_replace_block(
+            "/workspaces/chat.workspace",
+            "Last Tool Result",
+            "text",
+            "Last Tool Result",
+            content
+        );
+    } else {
+        updated = 1;
+    }
+
+    if (!updated) {
+        updated = workspace_builder_replace_block(
+            "/workspaces/chat.workspace",
+            "Tool Result",
+            "text",
+            "Last Tool Result",
+            content
+        );
+    }
+
+    if (!updated) {
+        updated = workspace_builder_replace_block(
+            "/workspaces/chat.workspace",
+            "Web Result",
+            "text",
+            "Last Tool Result",
+            content
+        );
+    }
+
+    workspace_builder_replace_block(
+        "/workspaces/chat.workspace",
+        "Conversation",
+        "text",
+        "Conversation",
+        content
+    );
+
+    if (updated) {
+        kprintf("Chat Screen: result updated\n");
+        ring_log_operation("chat screen: result updated");
+    } else {
+        kprintf("Chat Screen: result update failed\n");
+        ring_log_operation("chat screen: result update failed");
+    }
+}
+
+static void ai_bridge_open_chat_after_result(void) {
+    if (workspace_builder_open("/workspaces/chat.workspace")) {
+        return;
+    }
+
+    workspace_builder_open("chat.workspace");
+}
+
+
 
 int ai_bridge_ask(const char *prompt, char *out, int max) {
     char line[384];
@@ -229,6 +340,8 @@ int ai_bridge_execute(const char *prompt) {
         return ai_bridge_web(answer + 4);
     }
 
+    ai_bridge_update_chat_widget(prompt, answer);
+
     if (!intent_handle(answer)) {
         kprintf("AI Bridge: response was not an intent, showing as operation\n");
         ring_log_operation(answer);
@@ -271,6 +384,7 @@ int ai_bridge_web(const char *query) {
     kprintf("Web: %s\n", answer);
     ring_log_operation("web: response received");
     ai_bridge_update_web_widget(query, answer);
-    ai_bridge_open_home_after_web();
+    ai_bridge_update_chat_widget(query, answer);
+    ai_bridge_open_chat_after_result();
     return 1;
 }

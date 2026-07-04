@@ -141,6 +141,28 @@ static const char *ring_home_content(void) {
     return "State: unknown";
 }
 
+static void ring_update_chat_visual(void) {
+    if (workspace_builder_replace_block(
+            "/workspaces/chat.workspace",
+            "AI Ring",
+            "status",
+            "AI Ring",
+            ring_home_content()
+        )) {
+        return;
+    }
+
+    service_call("workspace", "template", "chat /workspaces/chat.workspace");
+
+    workspace_builder_replace_block(
+        "/workspaces/chat.workspace",
+        "AI Ring",
+        "status",
+        "AI Ring",
+        ring_home_content()
+    );
+}
+
 static void ring_update_home_visual(void) {
     if (workspace_builder_replace_block(
             "/workspaces/home.workspace",
@@ -185,6 +207,7 @@ void ring_set_state(const char *state) {
         ring_state = RING_IDLE;
         eventlog_add("ring state idle");
         ring_update_home_visual();
+        ring_update_chat_visual();
         ring_log_operation("ring: idle");
         return;
     }
@@ -193,6 +216,7 @@ void ring_set_state(const char *state) {
         ring_state = RING_CHAT;
         eventlog_add("ring state chat");
         ring_update_home_visual();
+        ring_update_chat_visual();
         ring_log_operation("ring: chat");
         return;
     }
@@ -201,6 +225,7 @@ void ring_set_state(const char *state) {
         ring_state = RING_LISTENING;
         eventlog_add("ring state listening");
         ring_update_home_visual();
+        ring_update_chat_visual();
         ring_log_operation("ring: listening");
         return;
     }
@@ -209,6 +234,7 @@ void ring_set_state(const char *state) {
         ring_state = RING_THINKING;
         eventlog_add("ring state thinking");
         ring_update_home_visual();
+        ring_update_chat_visual();
         ring_log_operation("ring: thinking");
         return;
     }
@@ -217,6 +243,7 @@ void ring_set_state(const char *state) {
         ring_state = RING_DOCKED;
         eventlog_add("ring state docked");
         ring_update_home_visual();
+        ring_update_chat_visual();
         ring_log_operation("ring: docked");
         return;
     }

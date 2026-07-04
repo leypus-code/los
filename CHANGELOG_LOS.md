@@ -1,5 +1,30 @@
 # LOS Changelog
 
+## LOS v21.5c
+- Changed Chat Screen result format to compact first-line output
+- Web/AI results are now visible in cramped 80-column text layout
+- Last Tool Result now renders as query => answer instead of multiline User/Result format
+
+## LOS v21.5b
+- Fixed Chat Screen Last Tool Result not updating after ask/web results
+- Chat Screen update now patches existing workspace instead of blindly regenerating it
+- Added visible Chat Screen result update/debug messages
+- Added fallback block names for result updates
+
+## LOS v21.5a
+- Improved Home and Chat Screen readability in 80-column text mode
+- Replaced cramped 4-column areas with wider full-width and 2-column rows
+- Added resetui, resethome, and resetchat commands for regenerating user-facing screens
+- Chat Screen now prioritizes readable Conversation and Last Tool Result blocks
+
+## LOS v21.5
+- Added LOS Chat Screen workspace template
+- Added screen and chatui shell commands
+- Added chat screen intent aliases
+- Web/AI bridge results now update Chat Screen widgets
+- Ring state now updates both Home and Chat Screen
+- This starts separating developer shell from user-facing AI screen
+
 ## LOS v21.4
 - Added Web Result widget behavior for Home workspace
 - Web Bridge responses now update the Home screen

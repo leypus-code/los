@@ -172,6 +172,18 @@ static int intent_workspace_kind(const char *text, const char *kind, const char 
 }
 
 
+static int intent_chat_open(void) {
+    if (workspace_builder_open("/workspaces/chat.workspace")) {
+        return 1;
+    }
+
+    if (workspace_builder_open("chat.workspace")) {
+        return 1;
+    }
+
+    return intent_workspace_template("chat", "/workspaces/chat.workspace", 1);
+}
+
 static int intent_home_open(void) {
     if (workspace_builder_open("/workspaces/home.workspace")) {
         return 1;
@@ -385,7 +397,7 @@ static int intent_home_dashboard_mode(void) {
 
     intent_replace_any_button(
         "Project Plan",
-        "Task List",
+        "Notes Workspace",
         "Run Build",
         "Debug Workspace",
         "Open Debug Workspace",
@@ -429,7 +441,7 @@ static int intent_home_coding_mode(void) {
 
     intent_replace_any_button(
         "Project Plan",
-        "Task List",
+        "Notes Workspace",
         "Debug Workspace",
         "Run Build",
         "Run Build",
@@ -589,6 +601,22 @@ int intent_handle(const char *text) {
 
     if (strcmp(text, "restore engine panel") == 0) {
         return intent_home_engine_panel();
+    }
+
+    if (strcmp(text, "chat screen") == 0) {
+        return intent_chat_open();
+    }
+
+    if (strcmp(text, "open chat") == 0) {
+        return intent_chat_open();
+    }
+
+    if (strcmp(text, "chat ui") == 0) {
+        return intent_chat_open();
+    }
+
+    if (strcmp(text, "assistant screen") == 0) {
+        return intent_chat_open();
     }
 
     if (strcmp(text, "home") == 0) {
