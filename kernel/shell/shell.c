@@ -130,7 +130,7 @@ static const char *completion_commands[] = {
     "themes", "theme",
     "workspaces", "open", "mkworkspace", "workspace", "workstatus",
     "wstemplate", "wstitle", "wsadd", "wsbutton", "wsnode", "wsend",
-    "run", "startup", "intent", "gentask", "tasks", "ai", "aistatus", "services", "service", "apps", "runapp", "handlers",
+    "run", "startup", "intent", "gentask", "tasks", "tasklist", "taskshow", "taskdone", "taskopen", "ai", "aistatus", "services", "service", "apps", "runapp", "handlers",
     "models", "modelstatus", "importmodel", "loadmodel",
     "packages", "install", "remove", "formats", "load",
     "mem", "pages", "paging", "kmalloc", "kfree", "allocpage", "freepage",
@@ -718,6 +718,10 @@ static const char *help_lines[] = {
     "  intent \"text\"       Run rule-based intent",
     "  gentask <kind>        Generate task workspace",
     "  tasks                 List generated task files",
+    "  tasklist              List task summaries",
+    "  taskshow <name>       Show task file",
+    "  taskopen <name>       Open task workspace",
+    "  taskdone <name>       Mark task done",
     "  ai <intent>           Send intent to AI/Intent Engine",
     "  aistatus              Show AI status",
     "  services              List services",
@@ -926,6 +930,259 @@ static const char *shell_rest_arg(char **cursor) {
     return p;
 }
 
+
+static int shell_ends_with_text(const char *s, const char *suffix) {
+    int slen = 0;
+    int tlen = 0;
+
+    if (!s || !suffix) return 0;
+
+    while (s[slen]) slen++;
+    while (suffix[tlen]) tlen++;
+
+    if (slen < tlen) return 0;
+
+    return strcmp(s + slen - tlen, suffix) == 0;
+}
+
+static void task_make_filename(const char *name, char *out, int max) {
+    int pos = 0;
+    int has_suffix = 0;
+
+    if (!out || max <= 0) return;
+    out[0] = '\0';
+
+    if (!name || !name[0]) return;
+
+    if (shell_ends_with_text(name, ".task")) {
+        has_suffix = 1;
+    }
+
+    if (name[0] == '/') {
+        while (name[pos] && pos < max - 1) {
+            out[pos] = name[pos];
+            pos++;
+        }
+        out[pos] = '\0';
+        return;
+    }
+
+    const char *prefix = "/workspaces/";
+    for (int i = 0; prefix[i] && pos < max - 1; i++) {
+        out[pos++] = prefix[i];
+    }
+
+    for (int i = 0; name[i] && pos < max - 1; i++) {
+        out[pos++] = name[i];
+    }
+
+    if (!has_suffix && pos + 5 < max) {
+        out[pos++] = '.';
+        out[pos++] = 't';
+        out[pos++] = 'a';
+        out[pos++] = 's';
+        out[pos++] = 'k';
+    }
+
+    out[pos] = '\0';
+}
+
+static vfs_node_t *task_resolve(const char *name) {
+    char path[96];
+    task_make_filename(name, path, 96);
+
+    if (!path[0]) return 0;
+
+    return vfs_resolve(shell_cwd, path);
+}
+
+static void task_print_summary(vfs_node_t *task) {
+    if (!task || task->type != VFS_FILE || !task->content) return;
+
+    const char *title = 0;
+    const char *status = 0;
+    const char *kind = 0;
+    const char *workspace = 0;
+
+    for (int i = 0; task->content[i]; i++) {
+        if ((i == 0 || task->content[i - 1] == '\n') &&
+            task->content[i] == 'T' &&
+            task->content[i + 1] == 'I' &&
+            task->content[i + 2] == 'T' &&
+            task->content[i + 3] == 'L' &&
+            task->content[i + 4] == 'E' &&
+            task->content[i + 5] == '=') {
+            title = task->content + i + 6;
+        }
+
+        if ((i == 0 || task->content[i - 1] == '\n') &&
+            task->content[i] == 'S' &&
+            task->content[i + 1] == 'T' &&
+            task->content[i + 2] == 'A' &&
+            task->content[i + 3] == 'T' &&
+            task->content[i + 4] == 'U' &&
+            task->content[i + 5] == 'S' &&
+            task->content[i + 6] == '=') {
+            status = task->content + i + 7;
+        }
+
+        if ((i == 0 || task->content[i - 1] == '\n') &&
+            task->content[i] == 'K' &&
+            task->content[i + 1] == 'I' &&
+            task->content[i + 2] == 'N' &&
+            task->content[i + 3] == 'D' &&
+            task->content[i + 4] == '=') {
+            kind = task->content + i + 5;
+        }
+
+        if ((i == 0 || task->content[i - 1] == '\n') &&
+            task->content[i] == 'W' &&
+            task->content[i + 1] == 'O' &&
+            task->content[i + 2] == 'R' &&
+            task->content[i + 3] == 'K' &&
+            task->content[i + 4] == 'S' &&
+            task->content[i + 5] == 'P' &&
+            task->content[i + 6] == 'A' &&
+            task->content[i + 7] == 'C' &&
+            task->content[i + 8] == 'E' &&
+            task->content[i + 9] == '=') {
+            workspace = task->content + i + 10;
+        }
+    }
+
+    kprintf("  %s", task->name);
+
+    if (status) {
+        kprintf("  status=");
+        for (int i = 0; status[i] && status[i] != '\n'; i++) {
+            kprintf("%c", status[i]);
+        }
+    }
+
+    if (kind) {
+        kprintf("  kind=");
+        for (int i = 0; kind[i] && kind[i] != '\n'; i++) {
+            kprintf("%c", kind[i]);
+        }
+    }
+
+    if (title) {
+        kprintf("  title=");
+        for (int i = 0; title[i] && title[i] != '\n'; i++) {
+            kprintf("%c", title[i]);
+        }
+    }
+
+    if (workspace) {
+        kprintf("  workspace=");
+        for (int i = 0; workspace[i] && workspace[i] != '\n'; i++) {
+            kprintf("%c", workspace[i]);
+        }
+    }
+
+    kprintf("\n");
+}
+
+static int task_extract_workspace(vfs_node_t *task, char *out, int max) {
+    if (!task || !task->content || !out || max <= 0) return 0;
+
+    out[0] = '\0';
+
+    for (int i = 0; task->content[i]; i++) {
+        if ((i == 0 || task->content[i - 1] == '\n') &&
+            task->content[i] == 'W' &&
+            task->content[i + 1] == 'O' &&
+            task->content[i + 2] == 'R' &&
+            task->content[i + 3] == 'K' &&
+            task->content[i + 4] == 'S' &&
+            task->content[i + 5] == 'P' &&
+            task->content[i + 6] == 'A' &&
+            task->content[i + 7] == 'C' &&
+            task->content[i + 8] == 'E' &&
+            task->content[i + 9] == '=') {
+            int j = 0;
+            int p = i + 10;
+
+            while (task->content[p] && task->content[p] != '\n' && j < max - 1) {
+                out[j++] = task->content[p++];
+            }
+
+            out[j] = '\0';
+            return out[0] != '\0';
+        }
+    }
+
+    return 0;
+}
+
+static int task_set_status(vfs_node_t *task, const char *new_status) {
+    static char updated[768];
+    int out = 0;
+    int replaced = 0;
+
+    if (!task || task->type != VFS_FILE || !task->content || !new_status) return 0;
+
+    for (int i = 0; task->content[i] && out < 760;) {
+        if ((i == 0 || task->content[i - 1] == '\n') &&
+            task->content[i] == 'S' &&
+            task->content[i + 1] == 'T' &&
+            task->content[i + 2] == 'A' &&
+            task->content[i + 3] == 'T' &&
+            task->content[i + 4] == 'U' &&
+            task->content[i + 5] == 'S' &&
+            task->content[i + 6] == '=') {
+            const char *prefix = "STATUS=";
+
+            for (int k = 0; prefix[k] && out < 760; k++) {
+                updated[out++] = prefix[k];
+            }
+
+            for (int k = 0; new_status[k] && out < 760; k++) {
+                updated[out++] = new_status[k];
+            }
+
+            if (out < 760) {
+                updated[out++] = '\n';
+            }
+
+            while (task->content[i] && task->content[i] != '\n') {
+                i++;
+            }
+
+            if (task->content[i] == '\n') {
+                i++;
+            }
+
+            replaced = 1;
+            continue;
+        }
+
+        updated[out++] = task->content[i++];
+    }
+
+    if (!replaced) {
+        const char *prefix = "STATUS=";
+
+        if (out > 0 && updated[out - 1] != '\n' && out < 760) {
+            updated[out++] = '\n';
+        }
+
+        for (int k = 0; prefix[k] && out < 760; k++) {
+            updated[out++] = prefix[k];
+        }
+
+        for (int k = 0; new_status[k] && out < 760; k++) {
+            updated[out++] = new_status[k];
+        }
+
+        if (out < 760) {
+            updated[out++] = '\n';
+        }
+    }
+
+    updated[out] = '\0';
+    return vfs_write_file(task, updated);
+}
 
 static void shell_copy_unquoted_rest(const char *src, char *out, int max) {
     int start = 0;
@@ -1475,7 +1732,7 @@ static const char *command_lines[] = {
     "Themes: themes theme theme list theme next theme prev theme <name>",
     "Workspaces: workspaces open mkworkspace workspace workstatus wstemplate wstitle wsadd wsbutton wsnode wsend",
     "Scripts: run run -v startup",
-    "AI/Services: intent gentask tasks ai aistatus services service apps runapp handlers",
+    "AI/Services: intent gentask tasks tasklist taskshow taskopen taskdone ai aistatus services service apps runapp handlers",
     "Models/Packages: models modelstatus importmodel loadmodel packages install remove formats load",
     "Kernel/Debug: mem pages paging kmalloc kfree allocpage freepage ps newtask current schedule dmesg kbd panic",
     "Scrollback: scrollup scrolldown top bottom PageUp PageDown",
@@ -2719,6 +2976,149 @@ static void shell_execute(const char *command) {
         } else {
             kprintf("Model not found: %s\n", command + 10);
         }
+    } else if (strcmp(command, "tasklist") == 0) {
+        vfs_node_t *workspaces = vfs_resolve(shell_cwd, "/workspaces");
+
+        if (!workspaces || workspaces->type != VFS_DIRECTORY) {
+            shell_error("No /workspaces directory");
+            return;
+        }
+
+        kprintf("Tasks:\n");
+
+        vfs_node_t *child = workspaces->children;
+        int count = 0;
+
+        while (child) {
+            if (child->type == VFS_FILE && shell_ends_with_text(child->name, ".task")) {
+                task_print_summary(child);
+                count++;
+            }
+
+            child = child->next;
+        }
+
+        if (count == 0) {
+            kprintf("  none\n");
+        }
+
+        return;
+
+    } else if (
+        command[0] == 't' &&
+        command[1] == 'a' &&
+        command[2] == 's' &&
+        command[3] == 'k' &&
+        command[4] == 's' &&
+        command[5] == 'h' &&
+        command[6] == 'o' &&
+        command[7] == 'w' &&
+        command[8] == ' '
+    ) {
+        char *rest = (char *)(command + 9);
+        char name[64];
+
+        if (!shell_next_arg(&rest, name, 64)) {
+            shell_error("Usage: taskshow name");
+            return;
+        }
+
+        vfs_node_t *task = task_resolve(name);
+
+        if (!task || task->type != VFS_FILE) {
+            shell_error("Task not found");
+            return;
+        }
+
+        cat_lines[0] = task->content ? task->content : "(empty task)";
+        pager_open(task->name, cat_lines, 1);
+        return;
+
+    } else if (
+        command[0] == 't' &&
+        command[1] == 'a' &&
+        command[2] == 's' &&
+        command[3] == 'k' &&
+        command[4] == 'd' &&
+        command[5] == 'o' &&
+        command[6] == 'n' &&
+        command[7] == 'e' &&
+        command[8] == ' '
+    ) {
+        char *rest = (char *)(command + 9);
+        char name[64];
+
+        if (!shell_next_arg(&rest, name, 64)) {
+            shell_error("Usage: taskdone name");
+            return;
+        }
+
+        vfs_node_t *task = task_resolve(name);
+
+        if (!task || task->type != VFS_FILE) {
+            shell_error("Task not found");
+            return;
+        }
+
+        if (task_set_status(task, "done")) {
+            shell_ok("Task marked done");
+        } else {
+            shell_error("Task update failed");
+        }
+
+        return;
+
+    } else if (
+        command[0] == 't' &&
+        command[1] == 'a' &&
+        command[2] == 's' &&
+        command[3] == 'k' &&
+        command[4] == 'o' &&
+        command[5] == 'p' &&
+        command[6] == 'e' &&
+        command[7] == 'n' &&
+        command[8] == ' '
+    ) {
+        char *rest = (char *)(command + 9);
+        char name[64];
+        char workspace[96];
+
+        if (!shell_next_arg(&rest, name, 64)) {
+            shell_error("Usage: taskopen name");
+            return;
+        }
+
+        vfs_node_t *task = task_resolve(name);
+
+        if (!task || task->type != VFS_FILE) {
+            shell_error("Task not found");
+            return;
+        }
+
+        if (!task_extract_workspace(task, workspace, 96)) {
+            shell_error("Task has no workspace");
+            return;
+        }
+
+        if (service_call("workspace", "open", workspace)) {
+            return;
+        }
+
+        const char *short_name = workspace;
+
+        for (int i = 0; workspace[i]; i++) {
+            if (workspace[i] == '/') {
+                short_name = workspace + i + 1;
+            }
+        }
+
+        if (short_name && short_name[0] && service_call("workspace", "open", short_name)) {
+            return;
+        }
+
+        shell_error("Task workspace open failed");
+        return;
+
     } else if (strcmp(command, "tasks") == 0) {
         vfs_node_t *workspaces = vfs_resolve(shell_cwd, "/workspaces");
 

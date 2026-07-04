@@ -446,3 +446,21 @@ Task files contain:
     WORKSPACE=...
     STATUS=open
     NEXT=...
+
+
+## Task commands
+
+Task files can be listed, inspected, opened, and marked done.
+
+Examples:
+
+    tasklist
+    taskshow debug-build
+    taskopen debug-build
+    taskdone debug-build
+
+Task names may be given as:
+
+    debug-build
+    debug-build.task
+    /workspaces/debug-build.task

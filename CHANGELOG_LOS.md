@@ -1,5 +1,16 @@
 # LOS Changelog
 
+## LOS v20.22a
+- Fixed taskopen to open task workspaces through workspace service
+- taskopen now retries with basename when full /workspaces path fails
+
+## LOS v20.22
+- Added tasklist command for task summaries
+- Added taskshow command to inspect task metadata
+- Added taskopen command to open the workspace linked from a task file
+- Added taskdone command to update task status to done
+- Task files are now manageable from the shell
+
 ## LOS v20.21
 - Generated workspaces now create matching .task files
 - Task files store title, original intent, kind, workspace path, status, and next actions
