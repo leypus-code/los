@@ -1,5 +1,11 @@
 # LOS Changelog
 
+## LOS v20.25
+- Added task event logging to .task files
+- New task files now include EVENT=created
+- taskstatus, taskdone, taskreopen, and tasknext append EVENT entries
+- Added tasklog command to inspect task event history
+
 ## LOS v20.24
 - Workspace buttons can directly invoke task lifecycle commands
 - Generated task workspaces now include Mark Active and Mark Done buttons

@@ -185,6 +185,7 @@ static void workspace_write_task_file(const char *workspace_name, const char *ti
     ADD_TEXT("\n");
 
     ADD_TEXT("STATUS=open\n");
+    ADD_TEXT("EVENT=created\n");
 
     if (kind && strcmp(kind, "debug") == 0) {
         ADD_TEXT("NEXT=Inspect build output\n");

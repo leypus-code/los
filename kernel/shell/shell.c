@@ -130,7 +130,7 @@ static const char *completion_commands[] = {
     "themes", "theme",
     "workspaces", "open", "mkworkspace", "workspace", "workstatus",
     "wstemplate", "wstitle", "wsadd", "wsbutton", "wsnode", "wsend",
-    "run", "startup", "intent", "gentask", "tasks", "tasklist", "taskshow", "taskstatus", "tasknext", "taskreopen", "taskdone", "taskopen", "ai", "aistatus", "services", "service", "apps", "runapp", "handlers",
+    "run", "startup", "intent", "gentask", "tasks", "tasklist", "taskshow", "tasklog", "taskstatus", "tasknext", "taskreopen", "taskdone", "taskopen", "ai", "aistatus", "services", "service", "apps", "runapp", "handlers",
     "models", "modelstatus", "importmodel", "loadmodel",
     "packages", "install", "remove", "formats", "load",
     "mem", "pages", "paging", "kmalloc", "kfree", "allocpage", "freepage",
@@ -720,6 +720,7 @@ static const char *help_lines[] = {
     "  tasks                 List generated task files",
     "  tasklist              List task summaries",
     "  taskshow <name>       Show task file",
+    "  tasklog <name>        Show task event log",
     "  taskopen <name>       Open task workspace",
     "  taskstatus <n> <s>    Set task status",
     "  tasknext <n> \"text\" Add next action",
@@ -1086,6 +1087,42 @@ static void task_print_summary(vfs_node_t *task) {
     kprintf("\n");
 }
 
+static void task_print_events(vfs_node_t *task) {
+    int count = 0;
+
+    if (!task || task->type != VFS_FILE || !task->content) {
+        return;
+    }
+
+    kprintf("Task events: %s\n", task->name);
+
+    for (int i = 0; task->content[i]; i++) {
+        if ((i == 0 || task->content[i - 1] == '\n') &&
+            task->content[i] == 'E' &&
+            task->content[i + 1] == 'V' &&
+            task->content[i + 2] == 'E' &&
+            task->content[i + 3] == 'N' &&
+            task->content[i + 4] == 'T' &&
+            task->content[i + 5] == '=') {
+            int p = i + 6;
+
+            kprintf("  ");
+
+            while (task->content[p] && task->content[p] != '\n') {
+                kprintf("%c", task->content[p]);
+                p++;
+            }
+
+            kprintf("\n");
+            count++;
+        }
+    }
+
+    if (count == 0) {
+        kprintf("  none\n");
+    }
+}
+
 static int task_extract_workspace(vfs_node_t *task, char *out, int max) {
     if (!task || !task->content || !out || max <= 0) return 0;
 
@@ -1116,6 +1153,63 @@ static int task_extract_workspace(vfs_node_t *task, char *out, int max) {
     }
 
     return 0;
+}
+
+static int task_append_event(vfs_node_t *task, const char *event_text) {
+    static char updated[768];
+    int out = 0;
+
+    if (!task || task->type != VFS_FILE || !task->content || !event_text || !event_text[0]) {
+        return 0;
+    }
+
+    for (int i = 0; task->content[i] && out < 720; i++) {
+        updated[out++] = task->content[i];
+    }
+
+    if (out > 0 && updated[out - 1] != '\n' && out < 720) {
+        updated[out++] = '\n';
+    }
+
+    const char *prefix = "EVENT=";
+
+    for (int i = 0; prefix[i] && out < 720; i++) {
+        updated[out++] = prefix[i];
+    }
+
+    for (int i = 0; event_text[i] && out < 720; i++) {
+        updated[out++] = event_text[i];
+    }
+
+    if (out < 720) {
+        updated[out++] = '\n';
+    }
+
+    updated[out] = '\0';
+
+    return vfs_write_file(task, updated);
+}
+
+static int task_append_status_event(vfs_node_t *task, const char *status) {
+    char event[64];
+    int pos = 0;
+    const char *prefix = "status ";
+
+    if (!status || !status[0]) {
+        return 0;
+    }
+
+    for (int i = 0; prefix[i] && pos < 63; i++) {
+        event[pos++] = prefix[i];
+    }
+
+    for (int i = 0; status[i] && pos < 63; i++) {
+        event[pos++] = status[i];
+    }
+
+    event[pos] = '\0';
+
+    return task_append_event(task, event);
 }
 
 static int task_append_next(vfs_node_t *task, const char *next_text) {
@@ -1770,7 +1864,7 @@ static const char *command_lines[] = {
     "Themes: themes theme theme list theme next theme prev theme <name>",
     "Workspaces: workspaces open mkworkspace workspace workstatus wstemplate wstitle wsadd wsbutton wsnode wsend",
     "Scripts: run run -v startup",
-    "AI/Services: intent gentask tasks tasklist taskshow taskopen taskstatus tasknext taskreopen taskdone ai aistatus services service apps runapp handlers",
+    "AI/Services: intent gentask tasks tasklist taskshow tasklog taskopen taskstatus tasknext taskreopen taskdone ai aistatus services service apps runapp handlers",
     "Models/Packages: models modelstatus importmodel loadmodel packages install remove formats load",
     "Kernel/Debug: mem pages paging kmalloc kfree allocpage freepage ps newtask current schedule dmesg kbd panic",
     "Scrollback: scrollup scrolldown top bottom PageUp PageDown",
@@ -3099,11 +3193,40 @@ static void shell_execute(const char *command) {
         }
 
         if (task_set_status(task, "done")) {
+            task_append_status_event(task, "done");
             shell_ok("Task marked done");
         } else {
             shell_error("Task update failed");
         }
 
+        return;
+
+    } else if (
+        command[0] == 't' &&
+        command[1] == 'a' &&
+        command[2] == 's' &&
+        command[3] == 'k' &&
+        command[4] == 'l' &&
+        command[5] == 'o' &&
+        command[6] == 'g' &&
+        command[7] == ' '
+    ) {
+        char *rest = (char *)(command + 8);
+        char name[64];
+
+        if (!shell_next_arg(&rest, name, 64)) {
+            shell_error("Usage: tasklog name");
+            return;
+        }
+
+        vfs_node_t *task = task_resolve(name);
+
+        if (!task || task->type != VFS_FILE) {
+            shell_error("Task not found");
+            return;
+        }
+
+        task_print_events(task);
         return;
 
     } else if (
@@ -3136,6 +3259,7 @@ static void shell_execute(const char *command) {
         }
 
         if (task_set_status(task, status)) {
+            task_append_status_event(task, status);
             shell_ok("Task status updated");
         } else {
             shell_error("Task update failed");
@@ -3178,6 +3302,21 @@ static void shell_execute(const char *command) {
         }
 
         if (task_append_next(task, next_text)) {
+            char event[192];
+            int pos = 0;
+            const char *prefix = "next ";
+
+            for (int i = 0; prefix[i] && pos < 191; i++) {
+                event[pos++] = prefix[i];
+            }
+
+            for (int i = 0; next_text[i] && pos < 191; i++) {
+                event[pos++] = next_text[i];
+            }
+
+            event[pos] = '\0';
+            task_append_event(task, event);
+
             shell_ok("Task next action added");
         } else {
             shell_error("Task next update failed");
@@ -3214,6 +3353,7 @@ static void shell_execute(const char *command) {
         }
 
         if (task_set_status(task, "open")) {
+            task_append_event(task, "reopen");
             shell_ok("Task reopened");
         } else {
             shell_error("Task reopen failed");

@@ -303,3 +303,23 @@ Generated task workspaces include task lifecycle buttons such as:
 
     Mark Active
     Mark Done
+
+
+## Task event log
+
+Task files store lifecycle events.
+
+Examples:
+
+    tasklog debug-build
+    taskstatus debug-build active
+    tasknext debug-build "Run make clean && make run"
+    taskdone debug-build
+    tasklog debug-build
+
+Task files include event lines:
+
+    EVENT=created
+    EVENT=status active
+    EVENT=next Run make clean && make run
+    EVENT=status done
