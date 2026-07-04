@@ -177,6 +177,26 @@ int intent_handle(const char *text) {
         return 0;
     }
 
+    if (strcmp(text, "home") == 0) {
+        return intent_workspace_template("home", "/workspaces/home.workspace", 1);
+    }
+
+    if (strcmp(text, "open home") == 0) {
+        return intent_workspace_template("home", "/workspaces/home.workspace", 1);
+    }
+
+    if (strcmp(text, "start los") == 0) {
+        return intent_workspace_template("home", "/workspaces/home.workspace", 1);
+    }
+
+    if (strcmp(text, "ai home") == 0) {
+        return intent_workspace_template("home", "/workspaces/home.workspace", 1);
+    }
+
+    if (strcmp(text, "main screen") == 0) {
+        return intent_workspace_template("home", "/workspaces/home.workspace", 1);
+    }
+
     if (strcmp(text, "debug build error") == 0) {
         return intent_workspace_template("debug", "/workspaces/debug-build.workspace", 1);
     }

@@ -566,3 +566,23 @@ Example:
     history
 
 This is useful for checking long commands such as wsreplace, wsaction, tasknext, and intent phrases.
+
+
+## LOS AI Home
+
+The `home` command opens the first MVP version of the user-facing LOS screen.
+
+Examples:
+
+    home
+    los
+    intent "home"
+    intent "open home"
+
+AI Home represents the future ring/chat UX:
+
+    blank canvas
+    AI command center
+    generated workspaces
+    task dashboard
+    mutable workspace controls

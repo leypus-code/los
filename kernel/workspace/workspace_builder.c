@@ -932,6 +932,34 @@ int workspace_builder_template(const char *kind, const char *name) {
         return 1;
     }
 
+    if (strcmp(kind, "home") == 0) {
+        vfs_write_file(file,
+            "WORKSPACE\n"
+            "TITLE=LOS AI Home\n"
+            "NODE=root|vertical|1\n"
+            "NODE=row|horizontal|3\n"
+            "BLOCK=ai|AI Ring|State: docked\nSay or type what you want\nThe ring controls workspace generation\n"
+            "BLOCK=text|Command Center|Examples:\nintent \"debug build error\"\nintent \"system overview\"\nintent \"write notes\"\n"
+            "BLOCK=status|Workspace Engine|Mutable workspace documents: ready\nTask files: ready\nIntent engine: ready\n"
+            "END\n"
+            "NODE=row|horizontal|3\n"
+            "BLOCK=button|Create|Debug Workspace|shell:intent \"debug build error\"\n"
+            "BLOCK=button|Create|System Overview|shell:intent \"system overview\"\n"
+            "BLOCK=button|Create|Notes Workspace|shell:intent \"write notes\"\n"
+            "END\n"
+            "NODE=row|horizontal|2\n"
+            "BLOCK=list|Live Tasks|Use tasklist\ntaskopen debug-build\ntaskdone debug-build\n"
+            "BLOCK=button|Create|Project Plan|shell:intent \"plan project\"\n"
+            "BLOCK=button|Tools|Task List|shell:tasklist\n"
+            "END\n"
+            "END\n"
+        );
+
+        workspace_write_task_file(name, "LOS AI Home", "open home", "home");
+        eventlog_add("home workspace template created");
+        return 1;
+    }
+
     if (strcmp(kind, "debug") == 0) {
         vfs_write_file(file,
             "WORKSPACE\n"

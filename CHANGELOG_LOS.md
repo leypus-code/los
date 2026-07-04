@@ -1,5 +1,11 @@
 # LOS Changelog
 
+## LOS v20.27
+- Added LOS AI Home workspace template
+- Added home and los shell commands
+- Added intent aliases for home, open home, start los, ai home, and main screen
+- AI Home acts as the first MVP user-facing screen for the future ring/chat workspace UX
+
 ## LOS v20.26d
 - Increased shell history from 8 to 32 commands
 - Added history command to inspect recent shell commands
