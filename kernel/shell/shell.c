@@ -130,7 +130,7 @@ static const char *completion_commands[] = {
     "themes", "theme",
     "workspaces", "open", "mkworkspace", "workspace", "workstatus",
     "wstemplate", "wstitle", "wsadd", "wsbutton", "wsnode", "wsend",
-    "run", "startup", "intent", "gentask", "ai", "aistatus", "services", "service", "apps", "runapp", "handlers",
+    "run", "startup", "intent", "gentask", "tasks", "ai", "aistatus", "services", "service", "apps", "runapp", "handlers",
     "models", "modelstatus", "importmodel", "loadmodel",
     "packages", "install", "remove", "formats", "load",
     "mem", "pages", "paging", "kmalloc", "kfree", "allocpage", "freepage",
@@ -717,6 +717,7 @@ static const char *help_lines[] = {
     "AI / Services / Apps",
     "  intent \"text\"       Run rule-based intent",
     "  gentask <kind>        Generate task workspace",
+    "  tasks                 List generated task files",
     "  ai <intent>           Send intent to AI/Intent Engine",
     "  aistatus              Show AI status",
     "  services              List services",
@@ -1474,7 +1475,7 @@ static const char *command_lines[] = {
     "Themes: themes theme theme list theme next theme prev theme <name>",
     "Workspaces: workspaces open mkworkspace workspace workstatus wstemplate wstitle wsadd wsbutton wsnode wsend",
     "Scripts: run run -v startup",
-    "AI/Services: intent gentask ai aistatus services service apps runapp handlers",
+    "AI/Services: intent gentask tasks ai aistatus services service apps runapp handlers",
     "Models/Packages: models modelstatus importmodel loadmodel packages install remove formats load",
     "Kernel/Debug: mem pages paging kmalloc kfree allocpage freepage ps newtask current schedule dmesg kbd panic",
     "Scrollback: scrollup scrolldown top bottom PageUp PageDown",
@@ -2718,6 +2719,42 @@ static void shell_execute(const char *command) {
         } else {
             kprintf("Model not found: %s\n", command + 10);
         }
+    } else if (strcmp(command, "tasks") == 0) {
+        vfs_node_t *workspaces = vfs_resolve(shell_cwd, "/workspaces");
+
+        if (!workspaces || workspaces->type != VFS_DIRECTORY) {
+            shell_error("No /workspaces directory");
+            return;
+        }
+
+        kprintf("Task files:\n");
+
+        vfs_node_t *child = workspaces->children;
+        int count = 0;
+
+        while (child) {
+            int len = 0;
+            while (child->name[len]) len++;
+
+            if (len > 5 &&
+                child->name[len - 5] == '.' &&
+                child->name[len - 4] == 't' &&
+                child->name[len - 3] == 'a' &&
+                child->name[len - 2] == 's' &&
+                child->name[len - 1] == 'k') {
+                kprintf("  /workspaces/%s\n", child->name);
+                count++;
+            }
+
+            child = child->next;
+        }
+
+        if (count == 0) {
+            kprintf("  none\n");
+        }
+
+        return;
+
     } else if (
         command[0] == 'g' &&
         command[1] == 'e' &&

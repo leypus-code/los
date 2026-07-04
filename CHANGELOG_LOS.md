@@ -1,5 +1,11 @@
 # LOS Changelog
 
+## LOS v20.21
+- Generated workspaces now create matching .task files
+- Task files store title, original intent, kind, workspace path, status, and next actions
+- Added tasks command to list generated task files
+- Task-oriented workspace flow now has persistent task metadata in VFS
+
 ## LOS v20.20
 - Added generated task workspace templates
 - Added debug, overview, writing, and planning generated workspace kinds

@@ -215,3 +215,35 @@ Shortcut command:
     gentask planning
 
 These commands generate workspace files under /workspaces and open them as task screens.
+
+
+## Task files
+
+Generated task workspaces create matching task metadata files under /workspaces.
+
+Example:
+
+    intent "debug build error"
+
+Creates:
+
+    /workspaces/debug-build.workspace
+    /workspaces/debug-build.task
+
+List tasks:
+
+    tasks
+
+Inspect a task file:
+
+    cat /workspaces/debug-build.task
+
+Task files contain:
+
+    TASK
+    TITLE=...
+    INTENT=...
+    KIND=...
+    WORKSPACE=...
+    STATUS=open
+    NEXT=...

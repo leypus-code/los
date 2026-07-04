@@ -97,6 +97,125 @@ static const char *workspace_name_only(const char *name) {
     return last;
 }
 
+
+static void workspace_make_task_name(const char *workspace_name, char *out, int max) {
+    int i = 0;
+    int dot = -1;
+
+    if (!out || max <= 0) {
+        return;
+    }
+
+    out[0] = '\0';
+
+    if (!workspace_name) {
+        return;
+    }
+
+    while (workspace_name[i] && i < max - 1) {
+        if (workspace_name[i] == '.') {
+            dot = i;
+        }
+
+        out[i] = workspace_name[i];
+        i++;
+    }
+
+    out[i] = '\0';
+
+    if (dot >= 0) {
+        out[dot] = '\0';
+        i = dot;
+    }
+
+    if (i + 5 < max) {
+        out[i++] = '.';
+        out[i++] = 't';
+        out[i++] = 'a';
+        out[i++] = 's';
+        out[i++] = 'k';
+        out[i] = '\0';
+    }
+}
+
+static void workspace_write_task_file(const char *workspace_name, const char *title, const char *intent, const char *kind) {
+    char task_name[64];
+    char content[768];
+    int pos = 0;
+
+    if (!workspaces_dir || !workspace_name || !workspace_name[0]) {
+        return;
+    }
+
+    workspace_make_task_name(workspace_name, task_name, 64);
+
+    if (!task_name[0]) {
+        return;
+    }
+
+    vfs_node_t *task = vfs_find_child(workspaces_dir, task_name);
+    if (!task) {
+        task = vfs_create_file(workspaces_dir, task_name);
+    }
+
+    if (!task) {
+        return;
+    }
+
+    #define ADD_TEXT(txt) do { \
+        const char *_t = (txt); \
+        for (int _i = 0; _t && _t[_i] && pos < 760; _i++) content[pos++] = _t[_i]; \
+    } while (0)
+
+    ADD_TEXT("TASK\n");
+    ADD_TEXT("TITLE=");
+    ADD_TEXT(title ? title : "Generated Task");
+    ADD_TEXT("\n");
+
+    ADD_TEXT("INTENT=");
+    ADD_TEXT(intent ? intent : kind);
+    ADD_TEXT("\n");
+
+    ADD_TEXT("KIND=");
+    ADD_TEXT(kind ? kind : "custom");
+    ADD_TEXT("\n");
+
+    ADD_TEXT("WORKSPACE=/workspaces/");
+    ADD_TEXT(workspace_name);
+    ADD_TEXT("\n");
+
+    ADD_TEXT("STATUS=open\n");
+
+    if (kind && strcmp(kind, "debug") == 0) {
+        ADD_TEXT("NEXT=Inspect build output\n");
+        ADD_TEXT("NEXT=Find failing file and line\n");
+        ADD_TEXT("NEXT=Patch smallest surface\n");
+        ADD_TEXT("NEXT=Run make clean && make run\n");
+    } else if (kind && strcmp(kind, "overview") == 0) {
+        ADD_TEXT("NEXT=Review subsystem status\n");
+        ADD_TEXT("NEXT=Check services\n");
+        ADD_TEXT("NEXT=Check event log\n");
+    } else if (kind && strcmp(kind, "writing") == 0) {
+        ADD_TEXT("NEXT=Open /notes/draft.txt\n");
+        ADD_TEXT("NEXT=Write first draft\n");
+        ADD_TEXT("NEXT=Summarize todos\n");
+    } else if (kind && strcmp(kind, "planning") == 0) {
+        ADD_TEXT("NEXT=Define goal\n");
+        ADD_TEXT("NEXT=Split into milestones\n");
+        ADD_TEXT("NEXT=Pick next smallest patch\n");
+    } else {
+        ADD_TEXT("NEXT=Open workspace\n");
+        ADD_TEXT("NEXT=Review blocks\n");
+        ADD_TEXT("NEXT=Decide next action\n");
+    }
+
+    content[pos] = '\0';
+
+    #undef ADD_TEXT
+
+    vfs_write_file(task, content);
+}
+
 static int block_type_from_text(const char *type) {
     if (same_text(type, "status")) return UI_BLOCK_STATUS;
     if (same_text(type, "text")) return UI_BLOCK_TEXT;
@@ -739,6 +858,7 @@ int workspace_builder_template(const char *kind, const char *name) {
             "END\n"
         );
 
+        workspace_write_task_file(name, "Coding Workspace", "create coding workspace", "coding");
         eventlog_add("coding workspace template created");
         return 1;
     }
@@ -760,6 +880,7 @@ int workspace_builder_template(const char *kind, const char *name) {
             "END\n"
         );
 
+        workspace_write_task_file(name, "System Workspace", "create system workspace", "system");
         eventlog_add("system workspace template created");
         return 1;
     }
@@ -780,6 +901,7 @@ int workspace_builder_template(const char *kind, const char *name) {
             "END\n"
         );
 
+        workspace_write_task_file(name, "Notes Workspace", "create notes workspace", "notes");
         eventlog_add("notes workspace template created");
         return 1;
     }
@@ -796,6 +918,7 @@ int workspace_builder_template(const char *kind, const char *name) {
             "BLOCK=button|Action|Create service check|shell:echo Services OK > /notes/service.check\n"
         );
 
+        workspace_write_task_file(name, "Services Workspace", "create services workspace", "services");
         eventlog_add("services workspace template created");
         return 1;
     }
@@ -818,6 +941,7 @@ int workspace_builder_template(const char *kind, const char *name) {
             "END\n"
         );
 
+        workspace_write_task_file(name, "Debug Build Error", "debug build error", "debug");
         eventlog_add("debug task workspace generated");
         return 1;
     }
@@ -839,6 +963,7 @@ int workspace_builder_template(const char *kind, const char *name) {
             "END\n"
         );
 
+        workspace_write_task_file(name, "System Overview", "system overview", "overview");
         eventlog_add("overview task workspace generated");
         return 1;
     }
@@ -859,6 +984,7 @@ int workspace_builder_template(const char *kind, const char *name) {
             "END\n"
         );
 
+        workspace_write_task_file(name, "Writing Notes", "write notes", "writing");
         eventlog_add("writing task workspace generated");
         return 1;
     }
@@ -880,6 +1006,7 @@ int workspace_builder_template(const char *kind, const char *name) {
             "END\n"
         );
 
+        workspace_write_task_file(name, "Project Planning", "plan project", "planning");
         eventlog_add("planning task workspace generated");
         return 1;
     }
@@ -892,6 +1019,7 @@ int workspace_builder_template(const char *kind, const char *name) {
         "BLOCK=ai|AI|Template generation stub\n"
     );
 
+    workspace_write_task_file(name, "Custom Workspace", "custom workspace", kind);
     eventlog_add("custom workspace template created");
     return 1;
 }
