@@ -15,7 +15,6 @@ DEFAULT_MODEL = os.environ.get("LOS_AI_MODEL", "qwen2.5:0.5b")
 current_surface = "ai"
 current_layout = "empty"
 current_widgets = []
-active_widget = None
 
 
 
@@ -75,8 +74,6 @@ def is_vague_screen_request(prompt):
         or "files" in low
         or "file" in low
         or "logs" in low
-        or "notes" in low
-        or "note" in low
         or "docker" in low
         or "ssh" in low
         or "browser" in low
@@ -113,8 +110,6 @@ def is_explicit_workspace_request(prompt):
         or "files" in low
         or "file" in low
         or "logs" in low
-        or "notes" in low
-        or "note" in low
         or "docker" in low
         or "ssh" in low
         or "browser" in low
@@ -154,28 +149,17 @@ def infer_widgets_from_prompt(prompt):
     low = str(prompt or "").lower()
     widgets = []
 
-    if (
-        "5 widgets" in low
-        or "five widgets" in low
-        or "with 5 widget" in low
-        or "with five widget" in low
-    ):
-        return ["terminal", "editor", "files", "logs", "notes"]
-
     if "editor" in low or "edit" in low or "code" in low or "coding" in low:
         append_unique(widgets, "editor")
 
     if "terminal" in low or "shell" in low or "command" in low or "commands" in low:
         append_unique(widgets, "terminal")
 
-    if "files" in low or "file" in low or "filesystem" in low or "project tree" in low or "tree" in low:
+    if "files" in low or "file" in low or "project tree" in low or "tree" in low:
         append_unique(widgets, "files")
 
     if "logs" in low or "log" in low:
         append_unique(widgets, "logs")
-
-    if "notes" in low or "note" in low or "notepad" in low:
-        append_unique(widgets, "notes")
 
     if "docker" in low or "container" in low or "containers" in low or "service" in low or "services" in low:
         append_unique(widgets, "docker")
@@ -372,9 +356,6 @@ def normalize_widget_word(text):
     if "logs" in low or "log" in low or "logf" in low:
         return "logs"
 
-    if "notes" in low or "note" in low or "notepad" in low:
-        return "notes"
-
     if "docker" in low or "container" in low or "containers" in low:
         return "docker"
 
@@ -396,7 +377,6 @@ def mentioned_widgets(prompt):
         ("terminal", ["terminal", "shell", "console"]),
         ("files", ["files", "file", "filesystem", "overview", "tree"]),
         ("logs", ["logs", "log", "logf"]),
-        ("notes", ["notes", "note", "notepad"]),
         ("docker", ["docker", "container", "containers"]),
         ("ssh", ["ssh", "remote"]),
         ("browser", ["browser", "web", "preview"]),
@@ -425,38 +405,19 @@ def mentioned_widgets(prompt):
 
 
 def render_current_workspace(sock, note):
-    global current_layout, current_widgets
-
-    # Preserve state before workspace reset, because send_ui("workspace","reset")
-    # intentionally clears bridge memory.
-    layout = current_layout
-    widgets = list(current_widgets)
-
-    if not layout or layout == "empty":
-        if "logs" in widgets or "docker" in widgets:
-            layout = "debug"
-        elif "editor" in widgets or "terminal" in widgets or "notes" in widgets:
-            layout = "coding"
-        else:
-            layout = "empty"
-
     send_ui(sock, "state", "drawing")
     send_ui(sock, "note", "Updating workspace...")
     time.sleep(0.10)
 
     send_ui(sock, "workspace", "reset")
     send_ui(sock, "surface", "workspace")
-    send_ui(sock, "layout", layout)
+    send_ui(sock, "layout", current_layout)
 
-    for widget in widgets:
+    for widget in current_widgets:
         send_ui(sock, "widget", widget)
-
-    current_layout = layout
-    current_widgets = widgets
 
     send_ui(sock, "state", "ready")
     send_ui(sock, "note", note)
-
 
 
 def local_workspace_update(sock, prompt):
@@ -536,108 +497,6 @@ def local_workspace_update(sock, prompt):
 
 
 
-def local_focus_command(sock, prompt):
-    global active_widget
-
-    low = str(prompt or "").lower().strip()
-
-    if low in ("focus chat", "focus ai", "unfocus", "blur", "exit terminal"):
-        active_widget = None
-        send_ui(sock, "state", "ready")
-        send_ui(sock, "note", "Focused chat.")
-        return True
-
-    if current_surface != "workspace":
-        return False
-
-    if not low.startswith("focus "):
-        return False
-
-    widget = normalize_widget_word(low[6:].strip())
-
-    if not widget:
-        send_ui(sock, "state", "ready")
-        send_ui(sock, "note", "Unknown widget.")
-        return True
-
-    if widget not in current_widgets:
-        send_ui(sock, "state", "ready")
-        send_ui(sock, "note", f"{widget} widget is not open.")
-        return True
-
-    active_widget = widget
-
-    send_ui(sock, "state", "ready")
-    send_ui(sock, "note", f"Focused {widget}.")
-    return True
-
-
-
-def local_terminal_command(sock, prompt):
-    low = str(prompt or "").lower().strip()
-
-    if current_surface != "workspace":
-        return False
-
-    cmd = None
-
-    if low.startswith("terminal "):
-        cmd = str(prompt or "")[9:].strip()
-
-    elif low.startswith("run ") and " in terminal" in low:
-        raw = str(prompt or "").strip()
-        cmd = raw[4:].replace(" in terminal", "").strip()
-
-    elif low.startswith("execute ") and " in terminal" in low:
-        raw = str(prompt or "").strip()
-        cmd = raw[8:].replace(" in terminal", "").strip()
-
-    if not cmd:
-        return False
-
-    if not cmd.strip():
-        cmd = "help"
-
-    send_ui(sock, "terminal", cmd)
-    send_ui(sock, "state", "ready")
-    send_ui(sock, "note", "Terminal command executed.")
-    return True
-
-
-
-def local_focused_widget_input(sock, prompt):
-    low = str(prompt or "").lower().strip()
-
-    if current_surface != "workspace":
-        return False
-
-    if active_widget != "terminal":
-        return False
-
-    # Do not steal workspace/controller commands.
-    if low.startswith("focus "):
-        return False
-
-    if is_explicit_workspace_request(prompt):
-        return False
-
-    if (
-        "change" in low
-        or "replace" in low
-        or "instead" in low
-        or "swap" in low
-        or "add widget" in low
-        or "remove widget" in low
-    ):
-        return False
-
-    send_ui(sock, "terminal", str(prompt or "").strip())
-    send_ui(sock, "state", "ready")
-    send_ui(sock, "note", "Terminal command executed.")
-    return True
-
-
-
 def builtin_answer(prompt):
     from datetime import datetime
 
@@ -672,15 +531,6 @@ def ai_response(sock, provider, prompt):
     send_ui(sock, "state", "thinking")
     send_ui(sock, "note", "Thinking...")
     time.sleep(0.15)
-
-    if local_focus_command(sock, prompt):
-        return
-
-    if local_focused_widget_input(sock, prompt):
-        return
-
-    if local_terminal_command(sock, prompt):
-        return
 
     if local_workspace_update(sock, prompt):
         return

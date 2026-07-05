@@ -103,13 +103,6 @@ static void host_bridge_handle_line(const char *line) {
         return;
     }
 
-    if (strncmp(line, "LOS_UI|terminal|", 16) == 0) {
-        payload = line + 16;
-        gfx_terminal_execute(payload);
-        gfx_draw_workspace_surface();
-        return;
-    }
-
     if (strncmp(line, "LOS_UI|note|", 12) == 0) {
         payload = line + 12;
         gfx_draw_host_note(payload);

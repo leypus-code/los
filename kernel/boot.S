@@ -12,13 +12,13 @@ mb2_header_start:
     .long MB2_LENGTH
     .long MB2_CHECKSUM
 
-    /* Framebuffer request tag: type=5, size=20, 800x600x32 */
+    /* Framebuffer request tag: type=5, size=20, 1024x768x32 */
     .align 8
     .short 5
     .short 0
     .long 20
-    .long 800
-    .long 600
+    .long 1024
+    .long 768
     .long 32
 
     /* End tag */

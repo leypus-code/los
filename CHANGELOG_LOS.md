@@ -1,5 +1,18 @@
 # LOS Changelog
 
+## LOS v25.2
+- Added persistent framebuffer input state
+- Animated AI surface no longer erases typed input
+- Added conversational AI planner protocol with CHAT and ASK commands
+- Model can now answer or ask clarification before emitting UI commands
+- Forced 1024x768 framebuffer request and GRUB gfxpayload
+
+## LOS v25.1
+- Added animated fullscreen AI background
+- Added segmented animated model ring rendering
+- Added subtle grid and particle field for AI surface
+- AI surface now redraws full frames through the framebuffer backbuffer
+
 ## LOS v25.0
 - Added static framebuffer backbuffer
 - Added begin/present/end frame rendering path

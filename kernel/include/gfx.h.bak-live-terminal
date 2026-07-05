@@ -42,8 +42,3 @@ void gfx_end_frame(void);
 void gfx_set_current_input(const char *input);
 
 #endif
-
-
-void gfx_terminal_append_line(const char *line);
-void gfx_terminal_execute(const char *command);
-

@@ -36,6 +36,8 @@
 #include "../include/norton.h"
 #include "../include/pmm.h"
 #include "../include/paging.h"
+static void shell_draw_pixel_boot_screen(void);
+static void shell_gfx_refresh_input(void);
 
 static int shell_is_interactive_script_command(const char *cmd);
 
@@ -106,41 +108,23 @@ static void shell_unknown_or_ai(const char *command) {
 
 static int shell_active_screen = 1;
 
-static void shell_gfx_refresh_input(void);
+
+
+
+
+
 
 
 static void shell_draw_pixel_boot_screen(void) {
     /*
-     * Stable VGA pixel-style AI surface.
-     * This is intentionally text-mode based: keyboard input works reliably here.
+     * Pixel boot screen fallback.
+     * The old screen0 entry now maps to the current AI surface.
      */
-
-    for (int i = 0; i < 25; i++) {
-        kprintf("\n");
+    if (gfx_is_ready()) {
+        gfx_draw_ai_surface();
+        shell_gfx_refresh_input();
     }
-
-    kprintf("+------------------------------------------------------------------------------+\n");
-    kprintf("| LOS                                      AI SURFACE                           |\n");
-    kprintf("+------------------------------------------------------------------------------+\n");
-    kprintf("|                                                                              |\n");
-    kprintf("|  +----------------------+   +----------------------+   +-------------------+  |\n");
-    kprintf("|  | CONVERSATION         |   | AI RING              |   | OPERATIONS        |  |\n");
-    kprintf("|  |                      |   |                      |   |                   |  |\n");
-    kprintf("|  |  Type naturally.     |   |        #######       |   |  ready            |  |\n");
-    kprintf("|  |  Ask commands.       |   |      ##       ##     |   |  local model      |  |\n");
-    kprintf("|  |  Use AI mode.        |   |     ##   LOS   ##    |   |  shell active     |  |\n");
-    kprintf("|  |                      |   |      ##       ##     |   |                   |  |\n");
-    kprintf("|  |                      |   |        #######       |   |                   |  |\n");
-    kprintf("|  +----------------------+   +----------------------+   +-------------------+  |\n");
-    kprintf("|                                                                              |\n");
-    kprintf("+------------------------------------------------------------------------------+\n");
-    kprintf("| LOS />                                                                       |\n");
-    kprintf("+------------------------------------------------------------------------------+\n");
-    kprintf("\n");
 }
-
-
-
 
 static void shell_open_screen0(void) {
     shell_active_screen = 0;
@@ -247,11 +231,7 @@ static void shell_set_input(const char *cmd);
 static void shell_prompt_newline(void);
 static void shell_trim_command_for_execute(const char *src, char *dst, int max);
 
-static void shell_gfx_refresh_input(void) {
-    if (gfx_is_ready()) {
-        gfx_draw_shell_input(input_buffer);
-    }
-}
+
 
 
 int shell_is_ui_mode(void) { return ui_mode != 0; }
@@ -4496,6 +4476,12 @@ void shell_initialize(void) {
 }
 
 
+
+static void shell_gfx_refresh_input(void) {
+    gfx_set_current_input(input_buffer);
+    gfx_draw_shell_input(input_buffer);
+}
+
 static void shell_handle_gfx_key(int key) {
     if (!gfx_is_ready()) {
         return;
@@ -4756,17 +4742,22 @@ static void shell_handle_gfx_key(int key) {
         }
 
         if (exec_command[0]) {
-            shell_save_history(exec_command);
-            shell_execute(exec_command);
+            /*
+             * Pixel AI mode:
+             * plain natural language input goes directly to the model.
+             * User should not need /ask.
+             */
+            model_provider_ask(exec_command);
 
-            if (shell_gfx_mode == 0) {
-                gfx_draw_ai_surface();
-                gfx_draw_status_line("AI COMMAND SENT");
-            } else {
-                gfx_draw_legacy_target_surface();
-                gfx_draw_status_line("COMMAND SENT TO LEGACY TARGET");
-            }
+            input_length = 0;
+            input_cursor = 0;
+            input_buffer[0] = '\0';
+
+            gfx_set_current_input(input_buffer);
+            shell_gfx_refresh_input();
+            return;
         }
+
 
         input_length = 0;
         input_cursor = 0;
@@ -4943,9 +4934,21 @@ void shell_putchar(char c) {
         terminal_writestring("\n");
 
         if (exec_command[0]) {
-            shell_save_history(exec_command);
-            shell_execute(exec_command);
+            /*
+             * In framebuffer AI mode, plain text is a model request.
+             * User no longer needs /ask.
+             */
+            model_provider_ask(exec_command);
+
+            input_length = 0;
+            input_cursor = 0;
+            input_buffer[0] = '\0';
+
+            gfx_set_current_input(input_buffer);
+            shell_gfx_refresh_input();
+            return;
         }
+
 
         input_length = 0;
         input_cursor = 0;

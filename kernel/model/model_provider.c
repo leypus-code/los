@@ -22,12 +22,17 @@ static void model_provider_send_packet(const char *kind, const char *payload) {
 
 
 void model_provider_initialize(void) {
-    provider_mode = MODEL_PROVIDER_OFFLINE;
-    provider_status = MODEL_STATUS_OFFLINE;
+    /*
+     * Pixel AI mode defaults to host provider.
+     * The bridge may connect later, but user should not need /model host.
+     */
+    provider_mode = MODEL_PROVIDER_HOST;
+    provider_status = MODEL_STATUS_READY;
     loaded_model_name[0] = '\0';
 
-    gfx_set_model_state(0);
+    gfx_set_model_state(2);
 }
+
 
 void model_provider_set_mode(model_provider_mode_t mode) {
     provider_mode = mode;

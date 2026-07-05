@@ -264,3 +264,7 @@ bridge-fake:
 
 bridge-ollama:
 	LOS_AI_PROVIDER=ollama LOS_AI_MODEL=qwen2.5:0.5b python3 tools/ai_bridge.py
+
+run-ai-full: $(ISO)
+	rm -f /tmp/los-ai.sock
+	qemu-system-i386 -machine pc -vga std -cdrom $(ISO) -serial unix:/tmp/los-ai.sock,server=on,wait=off -display gtk,zoom-to-fit=on -full-screen -no-shutdown
