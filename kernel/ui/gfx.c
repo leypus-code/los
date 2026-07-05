@@ -7,6 +7,73 @@ static uint32_t gfx_width = 0;
 static uint32_t gfx_height = 0;
 static uint32_t gfx_pitch = 0;
 static uint32_t gfx_bpp = 0;
+static uint32_t gfx_anim_tick = 0;
+static int gfx_model_state = 0; /* 0 idle, 1 loading, 2 ready, 3 thinking, 4 drawing */
+
+#define MODEL_RING_BOX 320
+static uint32_t gfx_model_ring_buffer[MODEL_RING_BOX * MODEL_RING_BOX];
+
+static void gfx_buf_clear(uint32_t color) {
+    for (uint32_t i = 0; i < MODEL_RING_BOX * MODEL_RING_BOX; i++) {
+        gfx_model_ring_buffer[i] = color;
+    }
+}
+
+static void gfx_buf_put_pixel(int x, int y, uint32_t color) {
+    if (x < 0 || y < 0) return;
+    if (x >= MODEL_RING_BOX || y >= MODEL_RING_BOX) return;
+
+    gfx_model_ring_buffer[(uint32_t)y * MODEL_RING_BOX + (uint32_t)x] = color;
+}
+
+static void gfx_buf_fill_circle(int cx, int cy, int r, uint32_t color) {
+    if (r <= 0) return;
+
+    for (int y = -r; y <= r; y++) {
+        for (int x = -r; x <= r; x++) {
+            if ((x * x + y * y) <= (r * r)) {
+                gfx_buf_put_pixel(cx + x, cy + y, color);
+            }
+        }
+    }
+}
+
+static void gfx_buf_draw_ring_circle(int cx, int cy, int r_outer, int thickness, uint32_t color) {
+    if (r_outer <= 0 || thickness <= 0) return;
+
+    int r_inner = r_outer - thickness;
+    if (r_inner < 0) r_inner = 0;
+
+    int outer2 = r_outer * r_outer;
+    int inner2 = r_inner * r_inner;
+
+    for (int y = -r_outer; y <= r_outer; y++) {
+        for (int x = -r_outer; x <= r_outer; x++) {
+            int d2 = x * x + y * y;
+
+            if (d2 <= outer2 && d2 >= inner2) {
+                gfx_buf_put_pixel(cx + x, cy + y, color);
+            }
+        }
+    }
+}
+
+static void gfx_blit_model_ring_buffer(int screen_cx, int screen_cy) {
+    int start_x = screen_cx - (MODEL_RING_BOX / 2);
+    int start_y = screen_cy - (MODEL_RING_BOX / 2);
+
+    for (int y = 0; y < MODEL_RING_BOX; y++) {
+        for (int x = 0; x < MODEL_RING_BOX; x++) {
+            int px = start_x + x;
+            int py = start_y + y;
+
+            if (px >= 0 && py >= 0 && px < (int)gfx_width && py < (int)gfx_height) {
+                gfx_put_pixel((uint32_t)px, (uint32_t)py, gfx_model_ring_buffer[y * MODEL_RING_BOX + x]);
+            }
+        }
+    }
+}
+
 static uint32_t gfx_cursor_tick = 0;
 static int gfx_cursor_visible = 1;
 
@@ -293,33 +360,114 @@ static void gfx_draw_ring_circle(int cx, int cy, int r_outer, int thickness, uin
 
 
 
+
+void gfx_set_model_state(int state) {
+    if (state < 0) state = 0;
+    if (state > 4) state = 4;
+
+    gfx_model_state = state;
+    gfx_anim_tick = 0;
+}
+
+
+int gfx_get_model_state(void) {
+    return gfx_model_state;
+}
+
+static void gfx_draw_model_ring(void) {
+    uint32_t bg = rgb(1, 4, 13);
+    uint32_t blue = rgb(90, 170, 255);
+    uint32_t pale = rgb(210, 230, 255);
+    uint32_t dim = rgb(35, 55, 95);
+
+    int screen_cx;
+    int screen_cy;
+
+    int cx = MODEL_RING_BOX / 2;
+    int cy = MODEL_RING_BOX / 2;
+
+    int radius = 92;
+    int thickness = 8;
+    int pulse = 0;
+
+    if (!gfx_ready) {
+        return;
+    }
+
+    screen_cx = (int)(gfx_width / 2);
+    screen_cy = (int)(gfx_height / 2) - 30;
+
+    /*
+     * Render complete ring frame offscreen first.
+     * Then blit it to framebuffer.
+     * This removes visible clear/redraw flicker.
+     */
+    gfx_buf_clear(bg);
+
+    if (gfx_model_state == 0) {
+        gfx_buf_draw_ring_circle(cx, cy, radius, thickness, dim);
+        gfx_blit_model_ring_buffer(screen_cx, screen_cy);
+        return;
+    }
+
+    if (gfx_model_state == 1) {
+        /* loading: breathing */
+        pulse = (int)((gfx_anim_tick / 18000) % 18);
+        if (pulse > 9) pulse = 18 - pulse;
+
+        gfx_buf_draw_ring_circle(cx, cy, radius + pulse, thickness, blue);
+        gfx_buf_draw_ring_circle(cx, cy, radius - 22, 4, dim);
+        gfx_blit_model_ring_buffer(screen_cx, screen_cy);
+        return;
+    }
+
+    if (gfx_model_state == 2) {
+        /* ready */
+        gfx_buf_draw_ring_circle(cx, cy, radius, thickness, blue);
+        gfx_buf_fill_circle(cx, cy, 8, blue);
+        gfx_blit_model_ring_buffer(screen_cx, screen_cy);
+        return;
+    }
+
+    if (gfx_model_state == 3) {
+        /* thinking */
+        pulse = (int)((gfx_anim_tick / 14000) % 24);
+        if (pulse > 12) pulse = 24 - pulse;
+
+        gfx_buf_draw_ring_circle(cx, cy, radius + pulse, 6, blue);
+        gfx_buf_draw_ring_circle(cx, cy, radius - 24 - pulse / 2, 5, pale);
+        gfx_buf_fill_circle(cx, cy, 10 + pulse / 3, blue);
+        gfx_blit_model_ring_buffer(screen_cx, screen_cy);
+        return;
+    }
+
+    if (gfx_model_state == 4) {
+        /* drawing UI */
+        pulse = (int)((gfx_anim_tick / 10000) % 30);
+        if (pulse > 15) pulse = 30 - pulse;
+
+        gfx_buf_draw_ring_circle(cx, cy, radius + pulse, 5, pale);
+        gfx_buf_draw_ring_circle(cx, cy, radius - 20, 5, blue);
+        gfx_buf_draw_ring_circle(cx, cy, radius - 44 + pulse / 2, 4, dim);
+        gfx_buf_fill_circle(cx, cy, 7, pale);
+        gfx_blit_model_ring_buffer(screen_cx, screen_cy);
+        return;
+    }
+}
+
+
 void gfx_draw_ai_surface(void) {
     uint32_t bg = rgb(1, 4, 13);
-    uint32_t ring = rgb(90, 170, 255);
-
-    uint32_t cx;
-    uint32_t cy;
 
     if (!gfx_ready) {
         return;
     }
 
     gfx_clear(bg);
-
-    /*
-     * Ultra-minimal AI surface:
-     * black background + one clean ring in the center.
-     */
-    cx = gfx_width / 2;
-    cy = (gfx_height / 2) - 30;
-
-    gfx_draw_ring_circle((int)cx, (int)cy, 92, 8, ring);
-
-    /*
-     * Bottom cursor only.
-     */
+    gfx_draw_model_ring();
     gfx_draw_shell_input("");
 }
+
 
 
 
@@ -636,35 +784,7 @@ void gfx_draw_legacy_target_surface(void) {
 }
 
 
-void gfx_tick(void) {
-    uint32_t bg = rgb(1, 4, 13);
-    uint32_t cursor = rgb(90, 170, 255);
 
-    if (!gfx_ready) {
-        return;
-    }
-
-    gfx_cursor_tick++;
-
-    /*
-     * Slow down blink. kernel_run calls this very often.
-     */
-    if (gfx_cursor_tick < 900000) {
-        return;
-    }
-
-    gfx_cursor_tick = 0;
-    gfx_cursor_visible = !gfx_cursor_visible;
-
-    uint32_t cursor_x = gfx_width / 2;
-    uint32_t cursor_y = gfx_height - 58;
-
-    gfx_fill_rect(cursor_x, cursor_y, 10, 24, bg);
-
-    if (gfx_cursor_visible) {
-        gfx_fill_rect(cursor_x, cursor_y, 10, 24, cursor);
-    }
-}
 
 void gfx_draw_workspace_surface(void) {
     uint32_t bg = rgb(1, 4, 13);
@@ -702,3 +822,28 @@ void gfx_draw_workspace_surface(void) {
 
     gfx_draw_shell_input("");
 }
+
+
+void gfx_tick(void) {
+    if (!gfx_ready) {
+        return;
+    }
+
+    /*
+     * Idle is fully static.
+     */
+    if (gfx_model_state == 0) {
+        return;
+    }
+
+    gfx_anim_tick++;
+
+    /*
+     * More frequent redraw + offscreen buffer = smoother animation without flicker.
+     */
+    if ((gfx_anim_tick % 9000) == 0) {
+        gfx_draw_model_ring();
+    }
+}
+
+

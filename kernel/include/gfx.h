@@ -27,4 +27,6 @@ void gfx_mouse_move(int dx, int dy, uint8_t buttons);
 
 void gfx_tick(void);
 
+void gfx_set_model_state(int state);
+int gfx_get_model_state(void);
 #endif

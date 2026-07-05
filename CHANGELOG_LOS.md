@@ -1,5 +1,11 @@
 # LOS Changelog
 
+## LOS v24.3
+- Added animated model state surface
+- Added idle/loading/ready/thinking/drawing ring states
+- Added /idle, /loading, /ready, /thinking, /drawing, and /model commands
+- Ring animation now represents model lifecycle state
+
 ## LOS v24.2
 - Added first minimal framebuffer workspace surface
 - Added /workspace, /space, and /ws commands

@@ -334,6 +334,10 @@ void kernel_run(void) {
         keyboard_poll();
         mouse_poll();
 
+        if (gfx_is_ready()) {
+            gfx_tick();
+        }
+
         __asm__ volatile ("pause");
     }
 }

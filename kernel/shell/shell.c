@@ -4600,6 +4600,69 @@ static void shell_handle_gfx_key(int key) {
             return;
         }
 
+        if (strcmp(exec_command, "/idle") == 0 || strcmp(exec_command, "idle") == 0) {
+            gfx_set_model_state(0);
+            input_length = 0;
+            input_cursor = 0;
+            input_buffer[0] = '\0';
+            gfx_draw_ai_surface();
+            shell_gfx_refresh_input();
+            return;
+        }
+
+        if (strcmp(exec_command, "/loading") == 0 || strcmp(exec_command, "loading") == 0 ||
+            strcmp(exec_command, "/load") == 0 || strcmp(exec_command, "load") == 0) {
+            gfx_set_model_state(1);
+            input_length = 0;
+            input_cursor = 0;
+            input_buffer[0] = '\0';
+            gfx_draw_ai_surface();
+            shell_gfx_refresh_input();
+            return;
+        }
+
+        if (strcmp(exec_command, "/ready") == 0 || strcmp(exec_command, "ready") == 0) {
+            gfx_set_model_state(2);
+            input_length = 0;
+            input_cursor = 0;
+            input_buffer[0] = '\0';
+            gfx_draw_ai_surface();
+            shell_gfx_refresh_input();
+            return;
+        }
+
+        if (strcmp(exec_command, "/thinking") == 0 || strcmp(exec_command, "thinking") == 0 ||
+            strcmp(exec_command, "/think") == 0 || strcmp(exec_command, "think") == 0) {
+            gfx_set_model_state(3);
+            input_length = 0;
+            input_cursor = 0;
+            input_buffer[0] = '\0';
+            gfx_draw_ai_surface();
+            shell_gfx_refresh_input();
+            return;
+        }
+
+        if (strcmp(exec_command, "/drawing") == 0 || strcmp(exec_command, "drawing") == 0 ||
+            strcmp(exec_command, "/draw") == 0 || strcmp(exec_command, "draw") == 0) {
+            gfx_set_model_state(4);
+            input_length = 0;
+            input_cursor = 0;
+            input_buffer[0] = '\0';
+            gfx_draw_ai_surface();
+            shell_gfx_refresh_input();
+            return;
+        }
+
+        if (strcmp(exec_command, "/model") == 0 || strcmp(exec_command, "model") == 0) {
+            gfx_set_model_state(1);
+            input_length = 0;
+            input_cursor = 0;
+            input_buffer[0] = '\0';
+            gfx_draw_ai_surface();
+            shell_gfx_refresh_input();
+            return;
+        }
+
         if (exec_command[0]) {
             shell_save_history(exec_command);
             shell_execute(exec_command);
