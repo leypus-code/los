@@ -398,9 +398,8 @@ static void gfx_draw_model_ring(void) {
     screen_cy = (int)(gfx_height / 2) - 30;
 
     /*
-     * Render complete ring frame offscreen first.
-     * Then blit it to framebuffer.
-     * This removes visible clear/redraw flicker.
+     * Draw whole ring frame offscreen first,
+     * then copy complete frame to framebuffer.
      */
     gfx_buf_clear(bg);
 
@@ -454,6 +453,7 @@ static void gfx_draw_model_ring(void) {
         return;
     }
 }
+
 
 
 void gfx_draw_ai_surface(void) {
@@ -839,11 +839,13 @@ void gfx_tick(void) {
     gfx_anim_tick++;
 
     /*
-     * More frequent redraw + offscreen buffer = smoother animation without flicker.
+     * Frequent redraw of only the ring buffer.
+     * No full screen clear, no text redraw, no frame flicker.
      */
     if ((gfx_anim_tick % 9000) == 0) {
         gfx_draw_model_ring();
     }
 }
+
 
 
