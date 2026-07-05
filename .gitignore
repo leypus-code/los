@@ -16,3 +16,9 @@ iso_root/
 # Logs / temp
 *.log
 tmp/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
