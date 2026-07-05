@@ -1,5 +1,11 @@
 # LOS Changelog
 
+## LOS v24.5
+- Added COM1 serial driver
+- Added host AI bridge socket target through QEMU serial
+- Added model provider packets for mode/load/ask
+- Added tools/ai_bridge.py bridge stub for future LLaMA/Ollama integration
+
 ## LOS v24.4
 - Added model provider contract layer
 - Added host/local/offline model modes

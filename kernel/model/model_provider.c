@@ -2,11 +2,24 @@
 #include "../include/gfx.h"
 #include "../include/kprintf.h"
 #include "../include/string.h"
+#include "../include/serial.h"
 
 static model_provider_mode_t provider_mode = MODEL_PROVIDER_OFFLINE;
 static model_status_t provider_status = MODEL_STATUS_OFFLINE;
 
 static char loaded_model_name[64];
+
+static void model_provider_send_packet(const char *kind, const char *payload) {
+    if (!serial_is_ready()) {
+        return;
+    }
+
+    serial_write_string("LOS_AI|");
+    serial_write_string(kind ? kind : "unknown");
+    serial_write_string("|");
+    serial_write_line(payload ? payload : "");
+}
+
 
 void model_provider_initialize(void) {
     provider_mode = MODEL_PROVIDER_OFFLINE;
@@ -22,11 +35,13 @@ void model_provider_set_mode(model_provider_mode_t mode) {
     if (mode == MODEL_PROVIDER_OFFLINE) {
         provider_status = MODEL_STATUS_OFFLINE;
         gfx_set_model_state(0);
+        model_provider_send_packet("mode", "offline");
         return;
     }
 
     provider_status = MODEL_STATUS_READY;
     gfx_set_model_state(2);
+    model_provider_send_packet("mode", model_provider_mode_name());
 }
 
 model_provider_mode_t model_provider_get_mode(void) {
@@ -82,11 +97,12 @@ void model_provider_load(const char *model_name) {
     loaded_model_name[i] = '\0';
 
     /*
-     * v24.4 stub:
-     * real loading will later happen through host bridge or kernel-native runtime.
+     * v24.5:
+     * request host bridge to load model.
      */
     provider_status = MODEL_STATUS_LOADING;
     gfx_set_model_state(1);
+    model_provider_send_packet("load", loaded_model_name);
 }
 
 void model_provider_ask(const char *prompt) {
@@ -105,4 +121,5 @@ void model_provider_ask(const char *prompt) {
 
     provider_status = MODEL_STATUS_THINKING;
     gfx_set_model_state(3);
+    model_provider_send_packet("ask", prompt);
 }

@@ -250,3 +250,7 @@ run-ai: $(ISO)
 
 clean:
 	rm -rf kernel/*.o kernel/drivers/*.o kernel/cpu/*.o kernel/lib/*.o kernel/shell/*.o kernel/task/*.o kernel/fs/*.o kernel/ui/*.o kernel/app/*.o kernel/ipc/*.o kernel/log/*.o kernel/loader/*.o kernel/package/*.o kernel/editor/*.o kernel/ui_manager/*.o kernel/wm/*.o kernel/ai/*.o kernel/model/*.o kernel/service/*.o kernel/intent/*.o kernel/layout/*.o kernel/uiblock/*.o kernel/workspace/*.o kernel/fileassoc/*.o kernel/memory/*.o $(KERNEL) $(GFX_KERNEL) $(TEXT_KERNEL) $(ISO) iso_root/boot
+
+run-ai-bridge: $(ISO)
+	rm -f /tmp/los-ai.sock
+	qemu-system-i386 -machine pc -vga std -cdrom $(ISO) -serial unix:/tmp/los-ai.sock,server=on,wait=off -no-shutdown
