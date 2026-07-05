@@ -35,8 +35,10 @@ def send_ui(sock, kind, payload):
 
 
 def apply_model_plan(sock, prompt, answer):
-    surface_sent = False
-    note_sent = False
+    workspace_needed = False
+    layout_values = []
+    widget_values = []
+    note_value = None
 
     lines = []
     for raw in str(answer or "").splitlines():
@@ -45,51 +47,62 @@ def apply_model_plan(sock, prompt, answer):
             lines.append(line)
 
     if not lines:
-        send_ui(sock, "note", "No UI plan returned.")
         send_ui(sock, "state", "ready")
+        send_ui(sock, "note", "No UI plan returned.")
         return
 
     for line in lines:
         upper = line.upper()
 
         if upper.startswith("STATE "):
-            value = line[6:].strip().lower()
-            send_ui(sock, "state", value)
+            # We keep state lifecycle controlled by the bridge.
+            # Model can request it, but final ready/note order must stay stable.
             continue
 
         if upper.startswith("SURFACE "):
             value = line[8:].strip().lower()
-            send_ui(sock, "surface", value)
-            surface_sent = True
-            continue
-
-        if upper.startswith("NOTE "):
-            value = line[5:].strip()
-            send_ui(sock, "note", value[:120])
-            note_sent = True
-            continue
-
-        if upper.startswith("WIDGET "):
-            value = line[7:].strip().lower()
-            print(f"[plan] widget requested: {value}")
+            if value == "workspace":
+                workspace_needed = True
             continue
 
         if upper.startswith("LAYOUT "):
             value = line[7:].strip().lower()
-            print(f"[plan] layout requested: {value}")
+            layout_values.append(value)
+            if value in ("coding", "debug"):
+                workspace_needed = True
             continue
 
-    if not surface_sent:
-        if looks_like_workspace_request(prompt, answer):
-            send_ui(sock, "surface", "workspace")
-        else:
-            send_ui(sock, "surface", "ai")
+        if upper.startswith("WIDGET "):
+            value = line[7:].strip().lower()
+            widget_values.append(value)
+            workspace_needed = True
+            continue
 
-    if not note_sent:
-        send_ui(sock, "note", "UI plan applied.")
+        if upper.startswith("NOTE "):
+            note_value = line[5:].strip()
+            continue
+
+    if not workspace_needed:
+        workspace_needed = looks_like_workspace_request(prompt, answer)
+
+    if workspace_needed:
+        send_ui(sock, "workspace", "reset")
+        send_ui(sock, "surface", "workspace")
+
+        for layout in layout_values:
+            send_ui(sock, "layout", layout)
+
+        for widget in widget_values:
+            send_ui(sock, "widget", widget)
+    else:
+        send_ui(sock, "surface", "ai")
 
     send_ui(sock, "state", "ready")
 
+    if note_value:
+        send_ui(sock, "note", note_value[:120])
+    else:
+        send_ui(sock, "note", "UI plan applied.")
 
 
 def looks_like_workspace_request(prompt, answer):

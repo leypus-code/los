@@ -1,5 +1,11 @@
 # LOS Changelog
 
+## LOS v24.9
+- Added generated workspace widget state
+- Added LOS_UI layout and widget commands
+- Added coding/debug layout rendering in framebuffer workspace
+- Bridge now converts model UI plans into real workspace widget commands
+
 ## LOS v24.8
 - Added Python AI provider abstraction layer
 - Added fake and Ollama providers

@@ -786,11 +786,131 @@ void gfx_draw_legacy_target_surface(void) {
 
 
 
+
+/*
+ * Generated workspace state.
+ */
+static int gfx_workspace_layout = 0; /* 0 empty, 1 coding, 2 debug */
+static uint32_t gfx_workspace_widgets = 0;
+
+#define GFX_WIDGET_TERMINAL  (1u << 0)
+#define GFX_WIDGET_EDITOR    (1u << 1)
+#define GFX_WIDGET_FILES     (1u << 2)
+#define GFX_WIDGET_BROWSER   (1u << 3)
+#define GFX_WIDGET_LOGS      (1u << 4)
+#define GFX_WIDGET_DOCKER    (1u << 5)
+#define GFX_WIDGET_SSH       (1u << 6)
+
+static int gfx_streq(const char *a, const char *b) {
+    int i = 0;
+
+    if (!a || !b) {
+        return 0;
+    }
+
+    while (a[i] && b[i]) {
+        if (a[i] != b[i]) {
+            return 0;
+        }
+        i++;
+    }
+
+    return a[i] == '\0' && b[i] == '\0';
+}
+
+void gfx_workspace_reset(void) {
+    gfx_workspace_layout = 0;
+    gfx_workspace_widgets = 0;
+}
+
+void gfx_workspace_set_layout(const char *layout) {
+    if (gfx_streq(layout, "coding")) {
+        gfx_workspace_layout = 1;
+        return;
+    }
+
+    if (gfx_streq(layout, "debug")) {
+        gfx_workspace_layout = 2;
+        return;
+    }
+
+    gfx_workspace_layout = 0;
+}
+
+void gfx_workspace_add_widget(const char *widget) {
+    if (gfx_streq(widget, "terminal")) {
+        gfx_workspace_widgets |= GFX_WIDGET_TERMINAL;
+        return;
+    }
+
+    if (gfx_streq(widget, "editor")) {
+        gfx_workspace_widgets |= GFX_WIDGET_EDITOR;
+        return;
+    }
+
+    if (gfx_streq(widget, "files")) {
+        gfx_workspace_widgets |= GFX_WIDGET_FILES;
+        return;
+    }
+
+    if (gfx_streq(widget, "browser")) {
+        gfx_workspace_widgets |= GFX_WIDGET_BROWSER;
+        return;
+    }
+
+    if (gfx_streq(widget, "logs")) {
+        gfx_workspace_widgets |= GFX_WIDGET_LOGS;
+        return;
+    }
+
+    if (gfx_streq(widget, "docker")) {
+        gfx_workspace_widgets |= GFX_WIDGET_DOCKER;
+        return;
+    }
+
+    if (gfx_streq(widget, "ssh")) {
+        gfx_workspace_widgets |= GFX_WIDGET_SSH;
+        return;
+    }
+}
+
+static void gfx_draw_widget_panel(uint32_t x, uint32_t y, uint32_t w, uint32_t h, const char *title, const char *hint) {
+    uint32_t bg = rgb(1, 4, 13);
+    uint32_t border = rgb(35, 55, 95);
+    uint32_t fg = rgb(90, 170, 255);
+    uint32_t dim = rgb(35, 55, 95);
+
+    /*
+     * Very dark panel. Not a heavy window, just generated surface area.
+     */
+    gfx_fill_rect(x, y, w, h, bg);
+
+    gfx_draw_hline(x, y, w, border);
+    gfx_draw_hline(x, y + h - 1, w, border);
+    gfx_draw_vline(x, y, h, border);
+    gfx_draw_vline(x + w - 1, y, h, border);
+
+    gfx_draw_text(x + 12, y + 12, title, fg, 1);
+
+    if (hint) {
+        gfx_draw_text(x + 12, y + 34, hint, dim, 1);
+    }
+}
+
+
 void gfx_draw_workspace_surface(void) {
     uint32_t bg = rgb(1, 4, 13);
     uint32_t ring = rgb(90, 170, 255);
     uint32_t dim = rgb(35, 55, 95);
-    uint32_t text = rgb(90, 170, 255);
+    uint32_t fg = rgb(90, 170, 255);
+
+    uint32_t margin = 48;
+    uint32_t top = 54;
+    uint32_t bottom_reserved = 92;
+    uint32_t area_x = margin;
+    uint32_t area_y = 150;
+    uint32_t area_w = gfx_width - margin * 2;
+    uint32_t area_h = gfx_height - area_y - bottom_reserved;
 
     if (!gfx_ready) {
         return;
@@ -799,29 +919,86 @@ void gfx_draw_workspace_surface(void) {
     gfx_clear(bg);
 
     /*
-     * Minimal first workspace:
-     * one small ring, workspace title, empty working area, input cursor.
+     * Small AI ring as workspace header.
      */
+    gfx_draw_ring_circle((int)(gfx_width / 2), 74, 36, 4, ring);
 
-    uint32_t cx = gfx_width / 2;
-    uint32_t cy = 120;
+    gfx_draw_hline(margin, 122, gfx_width - margin * 2, dim);
 
-    gfx_draw_ring_circle((int)cx, (int)cy, 42, 5, ring);
-
-    gfx_draw_text(cx - 70, cy + 72, "WORKSPACE 01", text, 2);
+    if (gfx_workspace_layout == 1) {
+        gfx_draw_text(margin, top, "WORKSPACE / CODING", fg, 1);
+    } else if (gfx_workspace_layout == 2) {
+        gfx_draw_text(margin, top, "WORKSPACE / DEBUG", fg, 1);
+    } else {
+        gfx_draw_text(margin, top, "WORKSPACE", fg, 1);
+    }
 
     /*
-     * Empty working area marker.
-     * No hard window frames yet, just subtle anchor lines.
+     * Default coding layout:
+     * editor large left/top, terminal bottom, files/logs side panels.
      */
-    gfx_draw_hline(80, 260, gfx_width - 160, dim);
-    gfx_draw_hline(80, gfx_height - 120, gfx_width - 160, dim);
+    if (gfx_workspace_layout == 1) {
+        uint32_t left_w = (area_w * 62) / 100;
+        uint32_t right_w = area_w - left_w - 16;
+        uint32_t top_h = (area_h * 62) / 100;
+        uint32_t bottom_h = area_h - top_h - 16;
 
-    gfx_draw_text(90, 282, "READY", dim, 1);
-    gfx_draw_text(90, 304, "NEXT: GENERATED WIDGETS / TERMINAL / FILES", dim, 1);
+        if (gfx_workspace_widgets & GFX_WIDGET_EDITOR) {
+            gfx_draw_widget_panel(area_x, area_y, left_w, top_h, "EDITOR", "generated code surface");
+        }
+
+        if (gfx_workspace_widgets & GFX_WIDGET_TERMINAL) {
+            gfx_draw_widget_panel(area_x, area_y + top_h + 16, left_w, bottom_h, "TERMINAL", "shell / commands / build output");
+        }
+
+        if (gfx_workspace_widgets & GFX_WIDGET_FILES) {
+            gfx_draw_widget_panel(area_x + left_w + 16, area_y, right_w, (area_h - 16) / 2, "FILES", "project tree");
+        }
+
+        if (gfx_workspace_widgets & GFX_WIDGET_LOGS) {
+            gfx_draw_widget_panel(area_x + left_w + 16, area_y + ((area_h - 16) / 2) + 16, right_w, (area_h - 16) / 2, "LOGS", "runtime messages");
+        }
+
+        if ((gfx_workspace_widgets & GFX_WIDGET_FILES) == 0 &&
+            (gfx_workspace_widgets & GFX_WIDGET_LOGS) == 0 &&
+            (gfx_workspace_widgets & GFX_WIDGET_DOCKER) == 0 &&
+            (gfx_workspace_widgets & GFX_WIDGET_SSH) == 0) {
+            gfx_draw_widget_panel(area_x + left_w + 16, area_y, right_w, area_h, "AI CONTEXT", "next generated widgets");
+        }
+    } else if (gfx_workspace_layout == 2) {
+        uint32_t col_w = (area_w - 32) / 3;
+
+        gfx_draw_widget_panel(area_x, area_y, col_w, area_h, "LOGS", "debug stream");
+        gfx_draw_widget_panel(area_x + col_w + 16, area_y, col_w, area_h, "TERMINAL", "diagnostics");
+        gfx_draw_widget_panel(area_x + (col_w + 16) * 2, area_y, col_w, area_h, "STATE", "runtime inspection");
+    } else {
+        /*
+         * Empty/generated fallback.
+         */
+        gfx_draw_hline(area_x, area_y, area_w, dim);
+        gfx_draw_hline(area_x, area_y + area_h, area_w, dim);
+        gfx_draw_text(area_x + 12, area_y + 24, "READY", dim, 1);
+        gfx_draw_text(area_x + 12, area_y + 46, "ASK MODEL TO GENERATE WIDGETS", dim, 1);
+    }
+
+    /*
+     * Additional widgets not covered by main coding layout.
+     */
+    if (gfx_workspace_widgets & GFX_WIDGET_BROWSER) {
+        gfx_draw_text(margin, gfx_height - 126, "BROWSER WIDGET REQUESTED", dim, 1);
+    }
+
+    if (gfx_workspace_widgets & GFX_WIDGET_DOCKER) {
+        gfx_draw_text(margin + 180, gfx_height - 126, "DOCKER WIDGET REQUESTED", dim, 1);
+    }
+
+    if (gfx_workspace_widgets & GFX_WIDGET_SSH) {
+        gfx_draw_text(margin + 360, gfx_height - 126, "SSH WIDGET REQUESTED", dim, 1);
+    }
 
     gfx_draw_shell_input("");
 }
+
 
 
 void gfx_tick(void) {

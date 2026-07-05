@@ -109,6 +109,34 @@ static void host_bridge_handle_line(const char *line) {
         return;
     }
 
+
+    if (strncmp(line, "LOS_UI|workspace|reset", 22) == 0) {
+        gfx_workspace_reset();
+        if (host_bridge_surface == 1) {
+            gfx_draw_workspace_surface();
+        }
+        return;
+    }
+
+    if (strncmp(line, "LOS_UI|layout|", 14) == 0) {
+        payload = line + 14;
+        gfx_workspace_set_layout(payload);
+        if (host_bridge_surface == 1) {
+            gfx_draw_workspace_surface();
+        }
+        return;
+    }
+
+    if (strncmp(line, "LOS_UI|widget|", 14) == 0) {
+        payload = line + 14;
+        gfx_workspace_add_widget(payload);
+        if (host_bridge_surface == 1) {
+            gfx_draw_workspace_surface();
+        }
+        return;
+    }
+
+
 }
 
 void host_bridge_poll(void) {

@@ -31,4 +31,7 @@ void gfx_set_model_state(int state);
 int gfx_get_model_state(void);
 void gfx_draw_host_note(const char *text);
 
+void gfx_workspace_reset(void);
+void gfx_workspace_set_layout(const char *layout);
+void gfx_workspace_add_widget(const char *widget);
 #endif
