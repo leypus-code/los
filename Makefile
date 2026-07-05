@@ -33,7 +33,7 @@ OBJS=kernel/boot.o \
      kernel/ai/ai.o \
      kernel/ai/ring.o \
      kernel/ai/ai_bridge.o \
-     kernel/model/model.o \
+     kernel/model/model.o kernel/model/model_provider.o \
      kernel/service/service.o \
      kernel/intent/intent.o \
      kernel/layout/layout.o \

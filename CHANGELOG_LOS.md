@@ -1,5 +1,11 @@
 # LOS Changelog
 
+## LOS v24.4
+- Added model provider contract layer
+- Added host/local/offline model modes
+- Added model lifecycle status bridge to framebuffer ring states
+- Added /model host, /model local, /model offline, /model load, and /ask commands
+
 ## LOS v24.3
 - Added animated model state surface
 - Added idle/loading/ready/thinking/drawing ring states

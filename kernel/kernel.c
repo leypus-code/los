@@ -32,6 +32,7 @@
 #include "include/pmm.h"
 #include "include/paging.h"
 #include "include/gfx.h"
+#include "include/model_provider.h"
 #include "include/multiboot2.h"
 #include "include/io.h"
 
@@ -196,6 +197,7 @@ void kernel_init(void) {
     }
 
     gfx_initialize_from_kernel();
+    model_provider_initialize();
 
     log_info("Initializing GDT...");
     gdt_initialize();

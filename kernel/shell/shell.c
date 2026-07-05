@@ -3,6 +3,7 @@
 #include "../include/string.h"
 #include "../include/kernel.h"
 #include "../include/gfx.h"
+#include "../include/model_provider.h"
 #include "../include/multiboot2.h"
 #include "../include/timer.h"
 #include "../include/kprintf.h"
@@ -4658,6 +4659,97 @@ static void shell_handle_gfx_key(int key) {
             input_length = 0;
             input_cursor = 0;
             input_buffer[0] = '\0';
+            gfx_draw_ai_surface();
+            shell_gfx_refresh_input();
+            return;
+        }
+
+        if (strcmp(exec_command, "/model status") == 0 || strcmp(exec_command, "model status") == 0) {
+            input_length = 0;
+            input_cursor = 0;
+            input_buffer[0] = '\0';
+
+            model_provider_set_status(model_provider_get_status());
+            gfx_draw_ai_surface();
+            shell_gfx_refresh_input();
+            return;
+        }
+
+        if (strcmp(exec_command, "/model host") == 0 || strcmp(exec_command, "model host") == 0) {
+            model_provider_set_mode(MODEL_PROVIDER_HOST);
+
+            input_length = 0;
+            input_cursor = 0;
+            input_buffer[0] = '\0';
+
+            gfx_draw_ai_surface();
+            shell_gfx_refresh_input();
+            return;
+        }
+
+        if (strcmp(exec_command, "/model local") == 0 || strcmp(exec_command, "model local") == 0) {
+            model_provider_set_mode(MODEL_PROVIDER_LOCAL);
+
+            input_length = 0;
+            input_cursor = 0;
+            input_buffer[0] = '\0';
+
+            gfx_draw_ai_surface();
+            shell_gfx_refresh_input();
+            return;
+        }
+
+        if (strcmp(exec_command, "/model offline") == 0 || strcmp(exec_command, "model offline") == 0) {
+            model_provider_set_mode(MODEL_PROVIDER_OFFLINE);
+
+            input_length = 0;
+            input_cursor = 0;
+            input_buffer[0] = '\0';
+
+            gfx_draw_ai_surface();
+            shell_gfx_refresh_input();
+            return;
+        }
+
+        if (strncmp(exec_command, "/model load", 11) == 0 || strncmp(exec_command, "model load", 10) == 0) {
+            const char *name = exec_command;
+
+            if (strncmp(exec_command, "/model load", 11) == 0) {
+                name = exec_command + 11;
+            } else {
+                name = exec_command + 10;
+            }
+
+            while (*name == ' ') {
+                name++;
+            }
+
+            model_provider_load(name);
+
+            input_length = 0;
+            input_cursor = 0;
+            input_buffer[0] = '\0';
+
+            gfx_draw_ai_surface();
+            shell_gfx_refresh_input();
+            return;
+        }
+
+        if (strncmp(exec_command, "/ask ", 5) == 0 || strncmp(exec_command, "ask ", 4) == 0) {
+            const char *prompt = exec_command;
+
+            if (strncmp(exec_command, "/ask ", 5) == 0) {
+                prompt = exec_command + 5;
+            } else {
+                prompt = exec_command + 4;
+            }
+
+            model_provider_ask(prompt);
+
+            input_length = 0;
+            input_cursor = 0;
+            input_buffer[0] = '\0';
+
             gfx_draw_ai_surface();
             shell_gfx_refresh_input();
             return;

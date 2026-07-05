@@ -63,3 +63,27 @@ char *strstr(const char *haystack, const char *needle) {
 
     return 0;
 }
+
+
+int strncmp(const char *a, const char *b, int n) {
+    int i;
+
+    if (n <= 0) {
+        return 0;
+    }
+
+    for (i = 0; i < n; i++) {
+        unsigned char ca = (unsigned char)a[i];
+        unsigned char cb = (unsigned char)b[i];
+
+        if (ca != cb) {
+            return ca - cb;
+        }
+
+        if (ca == '\0') {
+            return 0;
+        }
+    }
+
+    return 0;
+}
