@@ -1,5 +1,11 @@
 # LOS Changelog
 
+## LOS v24.6
+- Added host-to-LOS serial UI command channel
+- Added LOS_UI state and surface command parser
+- Added host bridge polling in kernel loop
+- Updated Python AI bridge to send fake UI responses back to LOS
+
 ## LOS v24.5
 - Added COM1 serial driver
 - Added host AI bridge socket target through QEMU serial

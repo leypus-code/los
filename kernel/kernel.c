@@ -1,6 +1,7 @@
 #include "include/kernel.h"
 #include "include/terminal.h"
 #include "include/serial.h"
+#include "include/host_bridge.h"
 #include "include/gdt.h"
 #include "include/idt.h"
 #include "include/pic.h"
@@ -335,6 +336,7 @@ void kernel_run(void) {
     while (1) {
         keyboard_poll();
         mouse_poll();
+        host_bridge_poll();
 
         if (gfx_is_ready()) {
             gfx_tick();
