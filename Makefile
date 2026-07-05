@@ -1,4 +1,6 @@
 KERNEL=kernel.elf
+GFX_KERNEL=kernel-gfx.elf
+TEXT_KERNEL=kernel-text.elf
 ISO=los.iso
 
 CC=clang
@@ -19,7 +21,7 @@ OBJS=kernel/boot.o \
      kernel/task/task.o \
      kernel/fs/vfs.o \
      kernel/ui/norton.o \
-     kernel/ui/pager.o \
+     kernel/ui/pager.o kernel/ui/gfx.o \
      kernel/app/app.o \
      kernel/ipc/ipc.o \
      kernel/log/eventlog.o \
@@ -45,6 +47,7 @@ OBJS=kernel/boot.o \
      kernel/drivers/terminal.o \
      kernel/drivers/serial.o \
      kernel/drivers/keyboard.o \
+     kernel/drivers/mouse.o \
      kernel/drivers/timer.o \
      kernel/drivers/rtc.o \
      kernel/cpu/gdt.o \
@@ -61,6 +64,12 @@ all: $(ISO)
 
 kernel/boot.o: kernel/boot.S
 	$(CC) $(ASFLAGS) -c kernel/boot.S -o kernel/boot.o
+
+kernel/boot_gfx.o: kernel/boot_gfx.S
+	$(CC) $(ASFLAGS) -c kernel/boot_gfx.S -o kernel/boot_gfx.o
+
+kernel/boot_text.o: kernel/boot_text.S
+	$(CC) $(ASFLAGS) -c kernel/boot_text.S -o kernel/boot_text.o
 
 kernel/cpu/gdt_flush.o: kernel/cpu/gdt_flush.S
 	$(CC) $(ASFLAGS) -c kernel/cpu/gdt_flush.S -o kernel/cpu/gdt_flush.o
@@ -106,6 +115,9 @@ kernel/ui/norton.o: kernel/ui/norton.c
 
 kernel/ui/pager.o: kernel/ui/pager.c
 	$(CC) $(CFLAGS) -c kernel/ui/pager.c -o kernel/ui/pager.o
+
+kernel/ui/gfx.o: kernel/ui/gfx.c
+	$(CC) $(CFLAGS) -c kernel/ui/gfx.c -o kernel/ui/gfx.o
 
 kernel/app/app.o: kernel/app/app.c
 	$(CC) $(CFLAGS) -c kernel/app/app.c -o kernel/app/app.o
@@ -182,6 +194,9 @@ kernel/drivers/terminal.o: kernel/drivers/terminal.c
 kernel/drivers/keyboard.o: kernel/drivers/keyboard.c
 	$(CC) $(CFLAGS) -c kernel/drivers/keyboard.c -o kernel/drivers/keyboard.o
 
+kernel/drivers/mouse.o: kernel/drivers/mouse.c
+	$(CC) $(CFLAGS) -c kernel/drivers/mouse.c -o kernel/drivers/mouse.o
+
 kernel/drivers/timer.o: kernel/drivers/timer.c
 	$(CC) $(CFLAGS) -c kernel/drivers/timer.c -o kernel/drivers/timer.o
 
@@ -203,20 +218,35 @@ kernel/cpu/irq.o: kernel/cpu/irq.c
 kernel/cpu/pic.o: kernel/cpu/pic.c
 	$(CC) $(CFLAGS) -c kernel/cpu/pic.c -o kernel/cpu/pic.o
 
-$(KERNEL): $(OBJS) linker.ld
-	$(LD) $(LDFLAGS) $(OBJS) -o $(KERNEL)
+BASE_OBJS=$(filter-out kernel/boot.o,$(OBJS))
+GFX_OBJS=kernel/boot_gfx.o $(BASE_OBJS)
+TEXT_OBJS=kernel/boot_text.o $(BASE_OBJS)
 
-$(ISO): $(KERNEL)
+$(KERNEL): $(GFX_KERNEL)
+	cp $(GFX_KERNEL) $(KERNEL)
+
+$(GFX_KERNEL): $(GFX_OBJS) linker.ld
+	$(LD) $(LDFLAGS) $(GFX_OBJS) -o $(GFX_KERNEL)
+
+$(TEXT_KERNEL): $(TEXT_OBJS) linker.ld
+	$(LD) $(LDFLAGS) $(TEXT_OBJS) -o $(TEXT_KERNEL)
+
+$(ISO): $(GFX_KERNEL) $(TEXT_KERNEL)
 	mkdir -p iso_root/boot/grub
-	cp $(KERNEL) iso_root/boot/kernel.elf
+	cp $(GFX_KERNEL) iso_root/boot/kernel-gfx.elf
+	cp $(TEXT_KERNEL) iso_root/boot/kernel-text.elf
 	cp boot/grub.cfg iso_root/boot/grub/grub.cfg
 	grub-mkrescue -o $(ISO) iso_root
 
 run: $(ISO)
-	qemu-system-i386 -cdrom $(ISO) -no-reboot -no-shutdown
+	qemu-system-i386 -machine pc -vga std -cdrom $(ISO) -no-shutdown
+
+
+run-control: $(ISO)
+	qemu-system-i386 -machine pc -vga std -cdrom $(ISO) -no-shutdown
 
 run-ai: $(ISO)
-	qemu-system-i386 -cdrom $(ISO) -no-reboot -no-shutdown -serial tcp:127.0.0.1:7777,server,nowait
+	qemu-system-i386 -machine pc -vga std -cdrom $(ISO) -no-shutdown -serial tcp:127.0.0.1:7777,server,nowait
 
 clean:
-	rm -rf kernel/*.o kernel/drivers/*.o kernel/cpu/*.o kernel/lib/*.o kernel/shell/*.o kernel/task/*.o kernel/fs/*.o kernel/ui/*.o kernel/app/*.o kernel/ipc/*.o kernel/log/*.o kernel/loader/*.o kernel/package/*.o kernel/editor/*.o kernel/ui_manager/*.o kernel/wm/*.o kernel/ai/*.o kernel/model/*.o kernel/service/*.o kernel/intent/*.o kernel/layout/*.o kernel/uiblock/*.o kernel/workspace/*.o kernel/fileassoc/*.o kernel/memory/*.o $(KERNEL) $(ISO) iso_root/boot
+	rm -rf kernel/*.o kernel/drivers/*.o kernel/cpu/*.o kernel/lib/*.o kernel/shell/*.o kernel/task/*.o kernel/fs/*.o kernel/ui/*.o kernel/app/*.o kernel/ipc/*.o kernel/log/*.o kernel/loader/*.o kernel/package/*.o kernel/editor/*.o kernel/ui_manager/*.o kernel/wm/*.o kernel/ai/*.o kernel/model/*.o kernel/service/*.o kernel/intent/*.o kernel/layout/*.o kernel/uiblock/*.o kernel/workspace/*.o kernel/fileassoc/*.o kernel/memory/*.o $(KERNEL) $(GFX_KERNEL) $(TEXT_KERNEL) $(ISO) iso_root/boot

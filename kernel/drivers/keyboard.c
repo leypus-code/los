@@ -2,6 +2,7 @@
 #include "../include/irq.h"
 #include "../include/io.h"
 #include "../include/shell.h"
+#include "../include/gfx.h"
 #include "../include/norton.h"
 #include "../include/editor.h"
 #include "../include/wm.h"
@@ -42,6 +43,15 @@ static char apply_case(uint8_t scancode) {
 }
 
 static void dispatch_key(int key) {
+    /*
+     * Framebuffer AI surface owns the visible UI.
+     * Route keys directly to shell framebuffer input path.
+     */
+    if (gfx_is_ready()) {
+        shell_handle_key(key);
+        return;
+    }
+
     int mode = shell_get_ui_mode();
 
     if (mode == 1) {
@@ -67,18 +77,41 @@ static void dispatch_key(int key) {
     shell_handle_key(key);
 }
 
+
 static void keyboard_callback(struct registers *regs) {
     (void)regs;
+
     uint8_t scancode = inb(0x60);
 
-    if (scancode == 0x3A) { caps_lock = !caps_lock; return; }
-    if (scancode == 0x2A || scancode == 0x36) { shift_down = 1; shift_presses++; return; }
-    if (scancode == 0xAA || scancode == 0xB6) { shift_down = 0; return; }
-    if (scancode == 0xE0) { extended_scancode = 1; return; }
-    if (scancode & 0x80) { extended_scancode = 0; return; }
+    if (scancode == 0x3A) {
+        caps_lock = !caps_lock;
+        return;
+    }
+
+    if (scancode == 0x2A || scancode == 0x36) {
+        shift_down = 1;
+        shift_presses++;
+        return;
+    }
+
+    if (scancode == 0xAA || scancode == 0xB6) {
+        shift_down = 0;
+        return;
+    }
+
+    if (scancode == 0xE0) {
+        extended_scancode = 1;
+        return;
+    }
+
+    if (scancode & 0x80) {
+        extended_scancode = 0;
+        return;
+    }
 
     if (extended_scancode) {
         int key = 0;
+
         if (scancode == 0x48) key = KEY_ARROW_UP;
         else if (scancode == 0x50) key = KEY_ARROW_DOWN;
         else if (scancode == 0x4B) key = KEY_ARROW_LEFT;
@@ -89,11 +122,16 @@ static void keyboard_callback(struct registers *regs) {
         else if (scancode == 0x4F) key = KEY_END;
 
         extended_scancode = 0;
-        if (key) dispatch_key(key);
+
+        if (key) {
+            dispatch_key(key);
+        }
+
         return;
     }
 
     int fk = 0;
+
     if (scancode == 0x3B) fk = KEY_F1;
     else if (scancode == 0x3C) fk = KEY_F2;
     else if (scancode == 0x3D) fk = KEY_F3;
@@ -105,16 +143,37 @@ static void keyboard_callback(struct registers *regs) {
     else if (scancode == 0x43) fk = KEY_F9;
     else if (scancode == 0x44) fk = KEY_F10;
 
-    if (fk) { dispatch_key(fk); return; }
+    if (fk) {
+        dispatch_key(fk);
+        return;
+    }
 
     char c = apply_case(scancode);
-    if (c) dispatch_key((int)c);
+
+    if (c) {
+        dispatch_key((int)c);
+    }
 }
 
 void keyboard_initialize(void) {
     irq_install_handler(1, keyboard_callback);
 }
 
-int keyboard_is_capslock_on(void) { return caps_lock; }
-int keyboard_is_shift_down(void) { return shift_down; }
-uint32_t keyboard_get_shift_presses(void) { return shift_presses; }
+void keyboard_poll(void) {
+    /*
+     * Not used in stable VGA input mode.
+     * Kept only because other kernel paths may reference it.
+     */
+}
+
+int keyboard_is_capslock_on(void) {
+    return caps_lock;
+}
+
+int keyboard_is_shift_down(void) {
+    return shift_down;
+}
+
+uint32_t keyboard_get_shift_presses(void) {
+    return shift_presses;
+}

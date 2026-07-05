@@ -1,0 +1,578 @@
+#include "../include/gfx.h"
+#include "../include/kernel.h"
+
+static int gfx_ready = 0;
+static uint32_t gfx_addr = 0;
+static uint32_t gfx_width = 0;
+static uint32_t gfx_height = 0;
+static uint32_t gfx_pitch = 0;
+static uint32_t gfx_bpp = 0;
+
+static int gfx_surface_mode = 0; /* 0 = AI, 1 = Shell */
+static int gfx_mouse_x = 400;
+static int gfx_mouse_y = 300;
+static uint8_t gfx_mouse_buttons = 0;
+
+static uint32_t rgb(uint8_t r, uint8_t g, uint8_t b) {
+    return ((uint32_t)r << 16) | ((uint32_t)g << 8) | (uint32_t)b;
+}
+
+void gfx_initialize_from_kernel(void) {
+    uint32_t fb_addr = kernel_framebuffer_addr_low();
+    uint32_t fb_addr_high = kernel_framebuffer_addr_high();
+
+    gfx_ready = 0;
+    gfx_addr = 0;
+    gfx_width = 0;
+    gfx_height = 0;
+    gfx_pitch = 0;
+    gfx_bpp = 0;
+
+    if (!kernel_framebuffer_available()) {
+        return;
+    }
+
+    if (fb_addr_high != 0) {
+        return;
+    }
+
+    gfx_bpp = kernel_framebuffer_bpp();
+
+    if (gfx_bpp != 32) {
+        return;
+    }
+
+    gfx_addr = fb_addr;
+    gfx_width = kernel_framebuffer_width();
+    gfx_height = kernel_framebuffer_height();
+    gfx_pitch = kernel_framebuffer_pitch();
+
+    if (gfx_addr == 0 || gfx_width == 0 || gfx_height == 0 || gfx_pitch == 0) {
+        gfx_ready = 0;
+        return;
+    }
+
+    gfx_ready = 1;
+}
+
+
+
+
+int gfx_is_ready(void) {
+    return gfx_ready;
+}
+
+void gfx_put_pixel(uint32_t x, uint32_t y, uint32_t color) {
+    uint32_t *pixel = 0;
+    uint32_t offset = 0;
+
+    if (!gfx_ready) {
+        return;
+    }
+
+    if (x >= gfx_width || y >= gfx_height) {
+        return;
+    }
+
+    offset = y * gfx_pitch + x * 4;
+    pixel = (uint32_t *)(gfx_addr + offset);
+    *pixel = color;
+}
+
+void gfx_clear(uint32_t color) {
+    if (!gfx_ready) {
+        return;
+    }
+
+    for (uint32_t y = 0; y < gfx_height; y++) {
+        for (uint32_t x = 0; x < gfx_width; x++) {
+            gfx_put_pixel(x, y, color);
+        }
+    }
+}
+
+void gfx_fill_rect(uint32_t x, uint32_t y, uint32_t w, uint32_t h, uint32_t color) {
+    if (!gfx_ready) {
+        return;
+    }
+
+    for (uint32_t yy = 0; yy < h; yy++) {
+        for (uint32_t xx = 0; xx < w; xx++) {
+            gfx_put_pixel(x + xx, y + yy, color);
+        }
+    }
+}
+
+static void gfx_draw_bar(uint32_t x, uint32_t y, uint32_t w, uint32_t h, uint32_t progress) {
+    uint32_t fill = 0;
+
+    if (progress > 100) {
+        progress = 100;
+    }
+
+    fill = (w * progress) / 100;
+
+    gfx_fill_rect(x, y, w, h, rgb(30, 36, 56));
+    gfx_fill_rect(x, y, fill, h, rgb(90, 180, 255));
+}
+
+static void gfx_draw_logo_blocks(uint32_t cx, uint32_t y) {
+    uint32_t c = rgb(235, 240, 255);
+
+    /*
+     * Blocky LOS logo.
+     * This is intentionally primitive: pure rectangles, no font dependency.
+     */
+
+    /* L */
+    gfx_fill_rect(cx + 0, y + 0, 16, 110, c);
+    gfx_fill_rect(cx + 0, y + 94, 70, 16, c);
+
+    /* O */
+    gfx_fill_rect(cx + 100, y + 0, 70, 16, c);
+    gfx_fill_rect(cx + 100, y + 94, 70, 16, c);
+    gfx_fill_rect(cx + 100, y + 0, 16, 110, c);
+    gfx_fill_rect(cx + 154, y + 0, 16, 110, c);
+
+    /* S */
+    gfx_fill_rect(cx + 200, y + 0, 70, 16, c);
+    gfx_fill_rect(cx + 200, y + 47, 70, 16, c);
+    gfx_fill_rect(cx + 200, y + 94, 70, 16, c);
+    gfx_fill_rect(cx + 200, y + 0, 16, 55, c);
+    gfx_fill_rect(cx + 254, y + 47, 16, 63, c);
+}
+
+void gfx_draw_boot_screen(void) {
+    uint32_t bg = rgb(8, 10, 18);
+    uint32_t panel = rgb(16, 20, 34);
+    uint32_t border = rgb(65, 78, 110);
+    uint32_t accent = rgb(90, 180, 255);
+
+    if (!gfx_ready) {
+        return;
+    }
+
+    gfx_clear(bg);
+
+    uint32_t panel_x = gfx_width / 10;
+    uint32_t panel_y = gfx_height / 10;
+    uint32_t panel_w = gfx_width - panel_x * 2;
+    uint32_t panel_h = gfx_height - panel_y * 2;
+
+    gfx_fill_rect(panel_x, panel_y, panel_w, panel_h, panel);
+    gfx_fill_rect(panel_x, panel_y, panel_w, 4, border);
+    gfx_fill_rect(panel_x, panel_y + panel_h - 4, panel_w, 4, border);
+    gfx_fill_rect(panel_x, panel_y, 4, panel_h, border);
+    gfx_fill_rect(panel_x + panel_w - 4, panel_y, 4, panel_h, border);
+
+    gfx_draw_logo_blocks((gfx_width - 270) / 2, panel_y + 70);
+
+    /* Subtitle underline */
+    gfx_fill_rect((gfx_width - 360) / 2, panel_y + 220, 360, 4, accent);
+
+    /* Loading bars */
+    uint32_t bx = panel_x + 120;
+    uint32_t by = panel_y + 285;
+    uint32_t bw = panel_w - 240;
+    uint32_t bh = 18;
+
+    gfx_draw_bar(bx, by + 0,   bw, bh, 35);
+    gfx_draw_bar(bx, by + 40,  bw, bh, 55);
+    gfx_draw_bar(bx, by + 80,  bw, bh, 75);
+    gfx_draw_bar(bx, by + 120, bw, bh, 90);
+    gfx_draw_bar(bx, by + 160, bw, bh, 100);
+
+    /* Bottom status block */
+    gfx_fill_rect(panel_x + 80, panel_y + panel_h - 90, panel_w - 160, 36, rgb(22, 30, 48));
+    gfx_fill_rect(panel_x + 80, panel_y + panel_h - 90, panel_w - 160, 4, accent);
+}
+
+static void gfx_frame(uint32_t x, uint32_t y, uint32_t w, uint32_t h, uint32_t color) {
+    gfx_fill_rect(x, y, w, 3, color);
+    gfx_fill_rect(x, y + h - 3, w, 3, color);
+    gfx_fill_rect(x, y, 3, h, color);
+    gfx_fill_rect(x + w - 3, y, 3, h, color);
+}
+
+static void gfx_draw_ring_blocks(uint32_t cx, uint32_t cy) {
+    uint32_t outer = rgb(90, 180, 255);
+    uint32_t inner = rgb(16, 20, 34);
+    uint32_t glow = rgb(40, 90, 150);
+
+    /* blocky ring / AI core */
+    gfx_fill_rect(cx - 70, cy - 70, 140, 10, glow);
+    gfx_fill_rect(cx - 70, cy + 60, 140, 10, glow);
+    gfx_fill_rect(cx - 70, cy - 70, 10, 140, glow);
+    gfx_fill_rect(cx + 60, cy - 70, 10, 140, glow);
+
+    gfx_fill_rect(cx - 50, cy - 50, 100, 10, outer);
+    gfx_fill_rect(cx - 50, cy + 40, 100, 10, outer);
+    gfx_fill_rect(cx - 50, cy - 50, 10, 100, outer);
+    gfx_fill_rect(cx + 40, cy - 50, 10, 100, outer);
+
+    gfx_fill_rect(cx - 26, cy - 26, 52, 52, inner);
+    gfx_fill_rect(cx - 12, cy - 12, 24, 24, outer);
+}
+
+static void gfx_draw_small_logo(uint32_t x, uint32_t y) {
+    uint32_t c = rgb(235, 240, 255);
+
+    /* L */
+    gfx_fill_rect(x + 0, y + 0, 8, 44, c);
+    gfx_fill_rect(x + 0, y + 36, 32, 8, c);
+
+    /* O */
+    gfx_fill_rect(x + 46, y + 0, 34, 8, c);
+    gfx_fill_rect(x + 46, y + 36, 34, 8, c);
+    gfx_fill_rect(x + 46, y + 0, 8, 44, c);
+    gfx_fill_rect(x + 72, y + 0, 8, 44, c);
+
+    /* S */
+    gfx_fill_rect(x + 94, y + 0, 34, 8, c);
+    gfx_fill_rect(x + 94, y + 18, 34, 8, c);
+    gfx_fill_rect(x + 94, y + 36, 34, 8, c);
+    gfx_fill_rect(x + 94, y + 0, 8, 24, c);
+    gfx_fill_rect(x + 120, y + 18, 8, 26, c);
+}
+
+void gfx_draw_ai_surface(void) {
+    uint32_t bg = rgb(7, 9, 16);
+    uint32_t panel2 = rgb(20, 26, 44);
+    uint32_t border = rgb(58, 72, 108);
+    uint32_t accent = rgb(90, 180, 255);
+    uint32_t text = rgb(235, 240, 255);
+    uint32_t muted = rgb(120, 135, 165);
+
+    if (!gfx_ready) {
+        return;
+    }
+
+    gfx_surface_mode = 0;
+    gfx_clear(bg);
+
+    uint32_t margin = 38;
+    uint32_t top = 32;
+    uint32_t bottom = gfx_height - 42;
+
+    gfx_frame(margin, top, gfx_width - margin * 2, bottom - top, border);
+
+    /* header */
+    gfx_fill_rect(margin + 3, top + 3, gfx_width - margin * 2 - 6, 56, panel2);
+    gfx_draw_small_logo(margin + 28, top + 12);
+    gfx_fill_rect(margin + 190, top + 28, gfx_width - margin * 2 - 240, 4, accent);
+    gfx_draw_text(margin + 210, top + 25, "AI SURFACE", text, 2);
+
+    /* Center ring only */
+    uint32_t cx = gfx_width / 2;
+    uint32_t cy = 230;
+
+    gfx_draw_ring_blocks(cx, cy);
+    gfx_draw_text(cx - 28, cy + 112, "ACTIVE", muted, 1);
+
+    /* Chat area under ring */
+    uint32_t chat_x = margin + 60;
+    uint32_t chat_y = 380;
+    uint32_t chat_w = gfx_width - margin * 2 - 120;
+    uint32_t chat_h = bottom - chat_y - 98;
+
+    gfx_frame(chat_x, chat_y, chat_w, chat_h, border);
+    gfx_draw_text(chat_x + 22, chat_y + 18, "CHAT", text, 2);
+    gfx_draw_text(chat_x + 22, chat_y + 54, "TYPE NATURALLY BELOW.", muted, 1);
+    gfx_draw_text(chat_x + 22, chat_y + 74, "COMMANDS: /SHELL  /AI", muted, 1);
+
+    gfx_draw_shell_input("");
+}
+
+
+
+static uint8_t gfx_font_row(char ch, int row) {
+    if (ch >= 'a' && ch <= 'z') ch = (char)(ch - 32);
+
+    switch (ch) {
+        case 'A': { static const uint8_t r[7]={14,17,17,31,17,17,17}; return r[row]; }
+        case 'B': { static const uint8_t r[7]={30,17,17,30,17,17,30}; return r[row]; }
+        case 'C': { static const uint8_t r[7]={14,17,16,16,16,17,14}; return r[row]; }
+        case 'D': { static const uint8_t r[7]={30,17,17,17,17,17,30}; return r[row]; }
+        case 'E': { static const uint8_t r[7]={31,16,16,30,16,16,31}; return r[row]; }
+        case 'F': { static const uint8_t r[7]={31,16,16,30,16,16,16}; return r[row]; }
+        case 'G': { static const uint8_t r[7]={14,17,16,23,17,17,14}; return r[row]; }
+        case 'H': { static const uint8_t r[7]={17,17,17,31,17,17,17}; return r[row]; }
+        case 'I': { static const uint8_t r[7]={14,4,4,4,4,4,14}; return r[row]; }
+        case 'J': { static const uint8_t r[7]={1,1,1,1,17,17,14}; return r[row]; }
+        case 'K': { static const uint8_t r[7]={17,18,20,24,20,18,17}; return r[row]; }
+        case 'L': { static const uint8_t r[7]={16,16,16,16,16,16,31}; return r[row]; }
+        case 'M': { static const uint8_t r[7]={17,27,21,21,17,17,17}; return r[row]; }
+        case 'N': { static const uint8_t r[7]={17,25,21,19,17,17,17}; return r[row]; }
+        case 'O': { static const uint8_t r[7]={14,17,17,17,17,17,14}; return r[row]; }
+        case 'P': { static const uint8_t r[7]={30,17,17,30,16,16,16}; return r[row]; }
+        case 'Q': { static const uint8_t r[7]={14,17,17,17,21,18,13}; return r[row]; }
+        case 'R': { static const uint8_t r[7]={30,17,17,30,20,18,17}; return r[row]; }
+        case 'S': { static const uint8_t r[7]={15,16,16,14,1,1,30}; return r[row]; }
+        case 'T': { static const uint8_t r[7]={31,4,4,4,4,4,4}; return r[row]; }
+        case 'U': { static const uint8_t r[7]={17,17,17,17,17,17,14}; return r[row]; }
+        case 'V': { static const uint8_t r[7]={17,17,17,17,17,10,4}; return r[row]; }
+        case 'W': { static const uint8_t r[7]={17,17,17,21,21,21,10}; return r[row]; }
+        case 'X': { static const uint8_t r[7]={17,17,10,4,10,17,17}; return r[row]; }
+        case 'Y': { static const uint8_t r[7]={17,17,10,4,4,4,4}; return r[row]; }
+        case 'Z': { static const uint8_t r[7]={31,1,2,4,8,16,31}; return r[row]; }
+
+        case '0': { static const uint8_t r[7]={14,17,19,21,25,17,14}; return r[row]; }
+        case '1': { static const uint8_t r[7]={4,12,4,4,4,4,14}; return r[row]; }
+        case '2': { static const uint8_t r[7]={14,17,1,2,4,8,31}; return r[row]; }
+        case '3': { static const uint8_t r[7]={30,1,1,14,1,1,30}; return r[row]; }
+        case '4': { static const uint8_t r[7]={2,6,10,18,31,2,2}; return r[row]; }
+        case '5': { static const uint8_t r[7]={31,16,16,30,1,1,30}; return r[row]; }
+        case '6': { static const uint8_t r[7]={14,16,16,30,17,17,14}; return r[row]; }
+        case '7': { static const uint8_t r[7]={31,1,2,4,8,8,8}; return r[row]; }
+        case '8': { static const uint8_t r[7]={14,17,17,14,17,17,14}; return r[row]; }
+        case '9': { static const uint8_t r[7]={14,17,17,15,1,1,14}; return r[row]; }
+
+        case ':': { static const uint8_t r[7]={0,4,4,0,4,4,0}; return r[row]; }
+        case '.': { static const uint8_t r[7]={0,0,0,0,0,12,12}; return r[row]; }
+        case '-': { static const uint8_t r[7]={0,0,0,31,0,0,0}; return r[row]; }
+        case '_': { static const uint8_t r[7]={0,0,0,0,0,0,31}; return r[row]; }
+        case '/': { static const uint8_t r[7]={1,1,2,4,8,16,16}; return r[row]; }
+        case '>': { static const uint8_t r[7]={16,8,4,2,4,8,16}; return r[row]; }
+        case '=': { static const uint8_t r[7]={0,31,0,0,31,0,0}; return r[row]; }
+        case '?': { static const uint8_t r[7]={14,17,1,2,4,0,4}; return r[row]; }
+        case ' ': return 0;
+    }
+
+    return 0;
+}
+
+static void gfx_draw_char(uint32_t x, uint32_t y, char ch, uint32_t color, uint32_t scale) {
+    if (scale == 0) scale = 1;
+
+    for (int row = 0; row < 7; row++) {
+        uint8_t bits = gfx_font_row(ch, row);
+
+        for (int col = 0; col < 5; col++) {
+            if (bits & (1 << (4 - col))) {
+                gfx_fill_rect(
+                    x + (uint32_t)col * scale,
+                    y + (uint32_t)row * scale,
+                    scale,
+                    scale,
+                    color
+                );
+            }
+        }
+    }
+}
+
+void gfx_draw_text(uint32_t x, uint32_t y, const char *text, uint32_t color, uint32_t scale) {
+    uint32_t cx = x;
+
+    if (!text) return;
+    if (scale == 0) scale = 1;
+
+    for (int i = 0; text[i]; i++) {
+        if (text[i] == '\n') {
+            y += 9 * scale;
+            cx = x;
+            continue;
+        }
+
+        gfx_draw_char(cx, y, text[i], color, scale);
+        cx += 6 * scale;
+    }
+}
+
+
+
+void gfx_draw_shell_surface(void) {
+    uint32_t bg = rgb(5, 7, 12);
+    uint32_t panel2 = rgb(20, 26, 44);
+    uint32_t border = rgb(58, 72, 108);
+    uint32_t accent = rgb(90, 180, 255);
+    uint32_t text = rgb(235, 240, 255);
+    uint32_t muted = rgb(120, 135, 165);
+
+    if (!gfx_ready) {
+        return;
+    }
+
+    gfx_surface_mode = 1;
+    gfx_clear(bg);
+
+    uint32_t margin = 38;
+    uint32_t top = 32;
+    uint32_t bottom = gfx_height - 42;
+
+    gfx_frame(margin, top, gfx_width - margin * 2, bottom - top, border);
+
+    gfx_fill_rect(margin + 3, top + 3, gfx_width - margin * 2 - 6, 56, panel2);
+    gfx_draw_small_logo(margin + 28, top + 12);
+    gfx_fill_rect(margin + 190, top + 28, gfx_width - margin * 2 - 240, 4, accent);
+    gfx_draw_text(margin + 210, top + 25, "SHELL MODE", text, 2);
+
+    gfx_draw_text(margin + 42, top + 92, "FRAMEBUFFER SHELL", text, 2);
+    gfx_draw_text(margin + 42, top + 128, "TYPE COMMANDS BELOW.", muted, 1);
+    gfx_draw_text(margin + 42, top + 148, "USE /AI TO RETURN TO AI SURFACE.", muted, 1);
+
+    gfx_frame(margin + 42, top + 188, gfx_width - margin * 2 - 84, bottom - top - 288, border);
+    gfx_draw_text(margin + 64, top + 212, "OUTPUT WILL BE ROUTED HERE NEXT.", muted, 1);
+
+    gfx_draw_shell_input("");
+}
+
+void gfx_draw_shell_input(const char *input) {
+    if (!gfx_ready) return;
+
+    uint32_t margin = 38;
+    uint32_t y = gfx_height - 80;
+    uint32_t w = gfx_width - margin * 2;
+
+    gfx_fill_rect(margin + 26, y, w - 52, 44, rgb(8, 12, 22));
+    gfx_frame(margin + 26, y, w - 52, 44, rgb(58, 72, 108));
+
+    gfx_draw_text(margin + 46, y + 14, "LOS />", rgb(235, 240, 255), 2);
+
+    if (input && input[0]) {
+        gfx_draw_text(margin + 190, y + 14, input, rgb(90, 180, 255), 2);
+    } else {
+        gfx_draw_text(margin + 190, y + 14, "TYPE NATURALLY", rgb(58, 72, 108), 2);
+    }
+
+    gfx_fill_rect(margin + w - 92, y + 13, 14, 20, rgb(90, 180, 255));
+}
+
+static uint32_t gfx_key_tick = 0;
+
+void gfx_debug_key_tick(void) {
+    if (!gfx_ready) return;
+
+    gfx_key_tick++;
+
+    uint32_t x = gfx_width - 80;
+    uint32_t y = 92;
+    uint32_t w = 8 + (gfx_key_tick % 8) * 8;
+
+    gfx_fill_rect(x, y, 72, 10, rgb(8, 12, 22));
+    gfx_fill_rect(x, y, w, 10, rgb(90, 180, 255));
+}
+
+
+void gfx_redraw_current_surface(void) {
+    if (!gfx_ready) return;
+
+    if (gfx_surface_mode == 1) {
+        gfx_draw_shell_surface();
+    } else {
+        gfx_draw_ai_surface();
+    }
+}
+
+void gfx_draw_status_line(const char *text) {
+    if (!gfx_ready) return;
+
+    uint32_t y = gfx_height - 122;
+    gfx_fill_rect(70, y, gfx_width - 140, 24, rgb(7, 9, 16));
+
+    if (text && text[0]) {
+        gfx_draw_text(78, y + 7, text, rgb(120, 135, 165), 1);
+    }
+}
+
+static void gfx_draw_mouse_cursor_shape(void) {
+    if (!gfx_ready) return;
+
+    uint32_t c = rgb(235, 240, 255);
+    uint32_t a = rgb(90, 180, 255);
+
+    uint32_t x = (uint32_t)gfx_mouse_x;
+    uint32_t y = (uint32_t)gfx_mouse_y;
+
+    gfx_fill_rect(x, y, 2, 14, c);
+    gfx_fill_rect(x + 2, y + 2, 2, 12, c);
+    gfx_fill_rect(x + 4, y + 4, 2, 10, c);
+    gfx_fill_rect(x + 6, y + 6, 2, 8, c);
+    gfx_fill_rect(x + 8, y + 8, 2, 6, c);
+    gfx_fill_rect(x + 10, y + 10, 2, 4, c);
+
+    if (gfx_mouse_buttons & 1) {
+        gfx_fill_rect(x + 14, y, 8, 8, a);
+    }
+}
+
+void gfx_mouse_move(int dx, int dy, uint8_t buttons) {
+    if (!gfx_ready) return;
+
+    gfx_mouse_x += dx;
+    gfx_mouse_y -= dy;
+    gfx_mouse_buttons = buttons;
+
+    if (gfx_mouse_x < 0) gfx_mouse_x = 0;
+    if (gfx_mouse_y < 0) gfx_mouse_y = 0;
+    if (gfx_mouse_x > (int)gfx_width - 24) gfx_mouse_x = (int)gfx_width - 24;
+    if (gfx_mouse_y > (int)gfx_height - 24) gfx_mouse_y = (int)gfx_height - 24;
+
+    gfx_redraw_current_surface();
+    gfx_draw_mouse_cursor_shape();
+}
+
+void gfx_draw_boot_selector(void) {
+    uint32_t bg = rgb(7, 9, 16);
+    uint32_t panel = rgb(15, 19, 32);
+    uint32_t border = rgb(58, 72, 108);
+    uint32_t accent = rgb(90, 180, 255);
+    uint32_t text = rgb(235, 240, 255);
+    uint32_t muted = rgb(120, 135, 165);
+
+    if (!gfx_ready) return;
+
+    gfx_clear(bg);
+
+    uint32_t x = 90;
+    uint32_t y = 90;
+    uint32_t w = gfx_width - 180;
+    uint32_t h = gfx_height - 180;
+
+    gfx_frame(x, y, w, h, border);
+    gfx_draw_small_logo(x + 34, y + 32);
+    gfx_draw_text(x + 210, y + 52, "BOOT SELECTOR", text, 2);
+    gfx_fill_rect(x + 210, y + 82, w - 260, 4, accent);
+
+    gfx_draw_text(x + 70, y + 150, "SELECT STARTUP SURFACE", text, 2);
+
+    gfx_frame(x + 70, y + 210, w - 140, 58, border);
+    gfx_draw_text(x + 92, y + 230, "F1 / 1", accent, 2);
+    gfx_draw_text(x + 210, y + 230, "AI SURFACE", text, 2);
+
+    gfx_frame(x + 70, y + 292, w - 140, 58, border);
+    gfx_draw_text(x + 92, y + 312, "F2 / 2", accent, 2);
+    gfx_draw_text(x + 210, y + 312, "LEGACY SHELL / NORTON TARGET", text, 2);
+
+    gfx_draw_text(x + 70, y + h - 70, "DEFAULT: AI SURFACE. THIS SCREEN IS KERNEL-LEVEL.", muted, 1);
+}
+
+void gfx_draw_legacy_target_surface(void) {
+    uint32_t bg = rgb(5, 7, 12);
+    uint32_t border = rgb(58, 72, 108);
+    uint32_t accent = rgb(90, 180, 255);
+    uint32_t text = rgb(235, 240, 255);
+    uint32_t muted = rgb(120, 135, 165);
+
+    if (!gfx_ready) return;
+
+    gfx_clear(bg);
+
+    uint32_t margin = 38;
+    uint32_t top = 32;
+    uint32_t bottom = gfx_height - 42;
+
+    gfx_frame(margin, top, gfx_width - margin * 2, bottom - top, border);
+    gfx_draw_small_logo(margin + 28, top + 12);
+    gfx_fill_rect(margin + 190, top + 28, gfx_width - margin * 2 - 240, 4, accent);
+    gfx_draw_text(margin + 210, top + 25, "LEGACY TARGET", text, 2);
+
+    gfx_draw_text(margin + 52, top + 110, "NORTON / SHELL / EDITOR TARGET", text, 2);
+    gfx_draw_text(margin + 52, top + 150, "NEXT STEP: FRAMEBUFFER TERMINAL ADAPTER.", muted, 1);
+    gfx_draw_text(margin + 52, top + 170, "AFTER THAT OLD TEXT UI WILL RENDER HERE.", muted, 1);
+    gfx_draw_text(margin + 52, top + 210, "COMMANDS:", text, 1);
+    gfx_draw_text(margin + 52, top + 232, "/AI     RETURN TO AI SURFACE", muted, 1);
+    gfx_draw_text(margin + 52, top + 252, "/BOOT   SHOW BOOT SELECTOR", muted, 1);
+
+    gfx_draw_shell_input("");
+}

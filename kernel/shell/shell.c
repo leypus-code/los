@@ -2,6 +2,7 @@
 #include "../include/terminal.h"
 #include "../include/string.h"
 #include "../include/kernel.h"
+#include "../include/gfx.h"
 #include "../include/multiboot2.h"
 #include "../include/timer.h"
 #include "../include/kprintf.h"
@@ -104,41 +105,39 @@ static void shell_unknown_or_ai(const char *command) {
 
 static int shell_active_screen = 1;
 
+static void shell_gfx_refresh_input(void);
+
+
 static void shell_draw_pixel_boot_screen(void) {
     /*
-     * Compact VGA text-mode boot surface.
-     * Must stay below 22 lines so the shell prompt remains visible.
+     * Stable VGA pixel-style AI surface.
+     * This is intentionally text-mode based: keyboard input works reliably here.
      */
 
-    /*
-     * Push earlier boot logs out of the visible VGA area without resetting
-     * terminal colors/state.
-     */
     for (int i = 0; i < 25; i++) {
         kprintf("\n");
     }
 
     kprintf("+------------------------------------------------------------------------------+\n");
+    kprintf("| LOS                                      AI SURFACE                           |\n");
+    kprintf("+------------------------------------------------------------------------------+\n");
     kprintf("|                                                                              |\n");
-    kprintf("|                         ##          #####        #####                        |\n");
-    kprintf("|                         ##         ##   ##      ##   ##                       |\n");
-    kprintf("|                         ##         ##   ##      ##                            |\n");
-    kprintf("|                         ##         ##   ##       #####                        |\n");
-    kprintf("|                         #######     #####       ##   ##                       |\n");
-    kprintf("|                         #######      ###         #####                        |\n");
-    kprintf("|                                                                              |\n");
-    kprintf("|                         AI-NATIVE OPERATING SYSTEM                           |\n");
-    kprintf("|                                                                              |\n");
-    kprintf("|   Kernel runtime        [#####...............]                                |\n");
-    kprintf("|   Workspace engine      [##########..........]                                |\n");
-    kprintf("|   AI provider contract  [###############.....]                                |\n");
-    kprintf("|   UI patch runtime      [##################..]                                |\n");
-    kprintf("|   Chat surface          [####################]                                |\n");
-    kprintf("|                                                                              |\n");
-    kprintf("|   Ready. Commands: screen1 = Chat, screen2 = Home, user = AI mode             |\n");
+    kprintf("|  +----------------------+   +----------------------+   +-------------------+  |\n");
+    kprintf("|  | CONVERSATION         |   | AI RING              |   | OPERATIONS        |  |\n");
+    kprintf("|  |                      |   |                      |   |                   |  |\n");
+    kprintf("|  |  Type naturally.     |   |        #######       |   |  ready            |  |\n");
+    kprintf("|  |  Ask commands.       |   |      ##       ##     |   |  local model      |  |\n");
+    kprintf("|  |  Use AI mode.        |   |     ##   LOS   ##    |   |  shell active     |  |\n");
+    kprintf("|  |                      |   |      ##       ##     |   |                   |  |\n");
+    kprintf("|  |                      |   |        #######       |   |                   |  |\n");
+    kprintf("|  +----------------------+   +----------------------+   +-------------------+  |\n");
     kprintf("|                                                                              |\n");
     kprintf("+------------------------------------------------------------------------------+\n");
+    kprintf("| LOS />                                                                       |\n");
+    kprintf("+------------------------------------------------------------------------------+\n");
+    kprintf("\n");
 }
+
 
 
 
@@ -159,7 +158,19 @@ static void shell_screen_show_status(void) {
 
 static void shell_open_screen1(void) {
     shell_active_screen = 1;
-    ai_bridge_context_set_workspace("Chat Screen");
+    ai_bridge_context_set_workspace("Graphical AI Surface");
+
+    if (gfx_is_ready()) {
+        /*
+         * Graphical framebuffer surface is not the old modal workspace UI.
+         * Keep keyboard input active for the visible input bar.
+         */
+        shell_set_ui_mode(0);
+        gfx_draw_ai_surface();
+        shell_gfx_refresh_input();
+        return;
+    }
+
     intent_handle("chat screen");
 }
 
@@ -189,13 +200,10 @@ static void shell_open_boot_chat_screen(void) {
         return;
     }
 
-    /*
-     * v22.7a:
-     * Boot stops on Pixel Boot Screen.
-     * Chat Screen is opened manually with screen1/user.
-     */
     shell_open_screen0();
 }
+
+
 
 
 
@@ -208,6 +216,8 @@ static int input_cursor = 0;
 static int input_scroll = 0;
 static int input_start_x = 0;
 static int input_start_y = 0;
+static int shell_gfx_mode = 0; /* 0 AI, 1 Shell */
+static int shell_gfx_boot_selector_active = 0;
 
 #define SHELL_REDIRECT_BUFFER_SIZE 4096
 static char redirect_buffer[SHELL_REDIRECT_BUFFER_SIZE];
@@ -234,6 +244,14 @@ static vfs_node_t *shell_cwd = 0;
 static void shell_redraw_input(void);
 static void shell_set_input(const char *cmd);
 static void shell_prompt_newline(void);
+static void shell_trim_command_for_execute(const char *src, char *dst, int max);
+
+static void shell_gfx_refresh_input(void) {
+    if (gfx_is_ready()) {
+        gfx_draw_shell_input(input_buffer);
+    }
+}
+
 
 int shell_is_ui_mode(void) { return ui_mode != 0; }
 
@@ -313,7 +331,7 @@ static void shell_print_history(void) {
 
 
 static const char *completion_commands[] = {
-    "help", "commands", "history", "mbi", "gfxinfo", "mbi", "screens", "screen0", "pixels", "bootscreen", "screen1", "screen2", "nextscreen", "prevscreen", "dev", "user", "home", "screen", "chatui", "chatreset", "bootui", "resetui", "resethome", "resetchat", "clear", "version", "uptime", "time", "date", "clock",
+    "help", "commands", "history", "mbi", "gfxinfo", "gfxboot", "gfxchat", "mbi", "screens", "screen0", "pixels", "bootscreen", "screen1", "screen2", "nextscreen", "prevscreen", "dev", "user", "home", "screen", "chatui", "chatreset", "bootui", "resetui", "resethome", "resetchat", "clear", "version", "uptime", "time", "date", "clock",
     "echo", "pwd", "uname", "whoami", "hostname", "true", "false",
     "ls", "tree", "cd", "cat", "write", "mkdir", "touch", "rm", "rename", "cp", "mv",
     "nano", "edit", "nc", "wm", "currentapp",
@@ -533,6 +551,7 @@ static int shell_complete_path_word(int word_start, int word_end) {
     }
 
     shell_prompt_newline();
+    shell_gfx_refresh_input();
     shell_set_input(input_buffer);
 
     return 1;
@@ -575,6 +594,7 @@ static int shell_complete_command_word(int word_start, int word_end) {
     }
 
     shell_prompt_newline();
+    shell_gfx_refresh_input();
     shell_set_input(input_buffer);
 
     return 1;
@@ -621,6 +641,7 @@ static int shell_complete_theme_word(int word_start, int word_end) {
     }
 
     shell_prompt_newline();
+    shell_gfx_refresh_input();
     shell_set_input(input_buffer);
 
     return 1;
@@ -664,6 +685,11 @@ static void shell_handle_tab(void) {
 }
 
 static void shell_redraw_input(void) {
+    if (gfx_is_ready()) {
+        gfx_draw_shell_input(input_buffer);
+        return;
+    }
+
     uint8_t color = theme_color_normal();
     int visible_width = 80 - input_start_x;
     int visible_cursor = 0;
@@ -881,6 +907,8 @@ static const char *help_lines[] = {
     "  version               Show LOS version",
     "  mbi                   Show Multiboot2 boot info",
     "  gfxinfo               Show framebuffer info",
+    "  gfxboot               Draw graphical boot screen",
+    "  gfxchat               Draw graphical AI chat surface",
     "  uptime                Show timer ticks",
     "  time                  Show RTC time",
     "  date                  Show RTC date",
@@ -1747,6 +1775,7 @@ static void theme_selector_cancel(void) {
     }
 
     shell_prompt_newline();
+    shell_gfx_refresh_input();
 }
 
 static void theme_selector_accept(void) {
@@ -1759,6 +1788,7 @@ static void theme_selector_accept(void) {
     }
 
     shell_prompt_newline();
+    shell_gfx_refresh_input();
 }
 
 static void theme_selector_preview(void) {
@@ -2414,6 +2444,16 @@ static int shell_move_command(const char *src_path, const char *dst_path) {
 
 
 static void shell_execute(const char *command) {
+    if (strcmp(command, "reboot") == 0 ||
+        strcmp(command, "reset") == 0 ||
+        strcmp(command, "bootmenu") == 0 ||
+        strcmp(command, "boot menu") == 0) {
+        kprintf("Rebooting to boot menu...\n");
+        kernel_reboot();
+        return;
+    }
+
+
     terminal_writestring("\n");
 
     if (shell_echo_redirect_inline(command)) {
@@ -2502,6 +2542,22 @@ static void shell_execute(const char *command) {
         kprintf("pitch:   %u\n", kernel_framebuffer_pitch());
         kprintf("bpp:     %u\n", kernel_framebuffer_bpp());
         kprintf("type:    %u\n", kernel_framebuffer_type());
+        return;
+    } else if (strcmp(command, "gfxboot") == 0) {
+        if (!gfx_is_ready()) {
+            kprintf("gfx: framebuffer not ready\n");
+            return;
+        }
+
+        gfx_draw_boot_screen();
+        return;
+    } else if (strcmp(command, "gfxchat") == 0) {
+        if (!gfx_is_ready()) {
+            kprintf("gfx: framebuffer not ready\n");
+            return;
+        }
+
+        gfx_draw_ai_surface();
         return;
     } else if (strcmp(command, "history") == 0) {
         shell_print_history();
@@ -4435,9 +4491,170 @@ void shell_initialize(void) {
     shell_open_boot_chat_screen();
 
     shell_prompt_newline();
+    shell_gfx_refresh_input();
 }
 
+
+static void shell_handle_gfx_key(int key) {
+    if (!gfx_is_ready()) {
+        return;
+    }
+
+    if (shell_gfx_boot_selector_active) {
+        if (key == '1' || key == KEY_F1) {
+            shell_gfx_boot_selector_active = 0;
+            shell_gfx_mode = 0;
+            input_length = 0;
+            input_cursor = 0;
+            input_buffer[0] = '\0';
+            gfx_draw_ai_surface();
+            gfx_draw_status_line("AI SURFACE BOOTED");
+            shell_gfx_refresh_input();
+            return;
+        }
+
+        if (key == '2' || key == KEY_F2) {
+            shell_gfx_boot_selector_active = 0;
+            shell_gfx_mode = 1;
+            input_length = 0;
+            input_cursor = 0;
+            input_buffer[0] = '\0';
+            gfx_draw_legacy_target_surface();
+            gfx_draw_status_line("LEGACY TARGET SELECTED");
+            shell_gfx_refresh_input();
+            return;
+        }
+
+        return;
+    }
+
+    if (key == KEY_F1) {
+        shell_gfx_mode = 0;
+        input_length = 0;
+        input_cursor = 0;
+        input_buffer[0] = '\0';
+        gfx_draw_ai_surface();
+        gfx_draw_status_line("AI SURFACE ACTIVE");
+        shell_gfx_refresh_input();
+        return;
+    }
+
+    if (key == KEY_F2) {
+        shell_gfx_mode = 1;
+        input_length = 0;
+        input_cursor = 0;
+        input_buffer[0] = '\0';
+        gfx_draw_legacy_target_surface();
+        gfx_draw_status_line("LEGACY TARGET ACTIVE");
+        shell_gfx_refresh_input();
+        return;
+    }
+
+    if (key == '\n' || key == '\r') {
+        char exec_command[SHELL_BUFFER_SIZE];
+
+        input_buffer[input_length] = '\0';
+        shell_trim_command_for_execute(input_buffer, exec_command, SHELL_BUFFER_SIZE);
+
+        if (strcmp(exec_command, "/boot") == 0 || strcmp(exec_command, "boot") == 0) {
+            shell_gfx_boot_selector_active = 1;
+            input_length = 0;
+            input_cursor = 0;
+            input_buffer[0] = '\0';
+            gfx_draw_boot_selector();
+            return;
+        }
+
+        if (strcmp(exec_command, "/workspace") == 0 || strcmp(exec_command, "workspace") == 0 ||
+            strcmp(exec_command, "/space") == 0 || strcmp(exec_command, "space") == 0 ||
+            strcmp(exec_command, "/ws") == 0 || strcmp(exec_command, "ws") == 0) {
+            input_length = 0;
+            input_cursor = 0;
+            input_buffer[0] = '\0';
+
+            gfx_draw_workspace_surface();
+            shell_gfx_refresh_input();
+            return;
+        }
+
+        if (strcmp(exec_command, "/ai") == 0 || strcmp(exec_command, "ai") == 0 || strcmp(exec_command, "surface") == 0) {
+            shell_gfx_mode = 0;
+            input_length = 0;
+            input_cursor = 0;
+            input_buffer[0] = '\0';
+            gfx_draw_ai_surface();
+            gfx_draw_status_line("AI SURFACE ACTIVE");
+            shell_gfx_refresh_input();
+            return;
+        }
+
+        if (strcmp(exec_command, "/shell") == 0 || strcmp(exec_command, "shell") == 0 ||
+            strcmp(exec_command, "/norton") == 0 || strcmp(exec_command, "norton") == 0) {
+            shell_gfx_mode = 1;
+            input_length = 0;
+            input_cursor = 0;
+            input_buffer[0] = '\0';
+            gfx_draw_legacy_target_surface();
+            gfx_draw_status_line("LEGACY TARGET ACTIVE");
+            shell_gfx_refresh_input();
+            return;
+        }
+
+        if (exec_command[0]) {
+            shell_save_history(exec_command);
+            shell_execute(exec_command);
+
+            if (shell_gfx_mode == 0) {
+                gfx_draw_ai_surface();
+                gfx_draw_status_line("AI COMMAND SENT");
+            } else {
+                gfx_draw_legacy_target_surface();
+                gfx_draw_status_line("COMMAND SENT TO LEGACY TARGET");
+            }
+        }
+
+        input_length = 0;
+        input_cursor = 0;
+        input_buffer[0] = '\0';
+        shell_gfx_refresh_input();
+        return;
+    }
+
+    if (key == '\b' || key == 127) {
+        if (input_length > 0) {
+            input_length--;
+            input_cursor = input_length;
+            input_buffer[input_length] = '\0';
+        }
+
+        shell_gfx_refresh_input();
+        return;
+    }
+
+    if (key >= 32 && key < 127) {
+        if (input_length < SHELL_BUFFER_SIZE - 1) {
+            input_buffer[input_length++] = (char)key;
+            input_cursor = input_length;
+            input_buffer[input_length] = '\0';
+        }
+
+        shell_gfx_refresh_input();
+        return;
+    }
+
+    shell_gfx_refresh_input();
+}
+
+
+
+
 void shell_handle_key(int key) {
+    if (gfx_is_ready()) {
+        shell_handle_gfx_key(key);
+        return;
+    }
+
+
     if (theme_selector_handle_key(key)) {
         return;
     }
@@ -4447,6 +4664,7 @@ void shell_handle_key(int key) {
 
         if (!pager_active() && !shell_is_ui_mode()) {
             shell_prompt_newline();
+    shell_gfx_refresh_input();
         }
 
         return;
@@ -4506,7 +4724,10 @@ void shell_handle_key(int key) {
     if (key >= 0 && key < 256) {
         shell_putchar((char)key);
     }
+
+    shell_gfx_refresh_input();
 }
+
 
 void shell_resume_from_ui(void) {
     input_length = 0;
@@ -4515,6 +4736,7 @@ void shell_resume_from_ui(void) {
 
     terminal_restore_screen();
     shell_prompt_newline();
+    shell_gfx_refresh_input();
 }
 
 
@@ -4548,7 +4770,11 @@ static void shell_trim_command_for_execute(const char *src, char *dst, int max) 
 }
 
 void shell_putchar(char c) {
-    if (shell_is_ui_mode()) {
+    /*
+     * Old text workspace UI mode blocks shell typing.
+     * Framebuffer graphical mode must still accept keyboard input.
+     */
+    if (shell_is_ui_mode() && !gfx_is_ready()) {
         return;
     }
 
@@ -4570,8 +4796,14 @@ void shell_putchar(char c) {
         input_cursor = 0;
         input_buffer[0] = '\0';
 
+        if (gfx_is_ready()) {
+            shell_gfx_refresh_input();
+            return;
+        }
+
         if (!shell_is_ui_mode() && !pager_active()) {
             shell_prompt_newline();
+            shell_gfx_refresh_input();
         }
 
         return;
@@ -4588,6 +4820,7 @@ void shell_putchar(char c) {
             input_buffer[input_length] = '\0';
 
             shell_redraw_input();
+            shell_gfx_refresh_input();
         }
 
         return;
@@ -4608,5 +4841,6 @@ void shell_putchar(char c) {
         input_buffer[input_length] = '\0';
 
         shell_redraw_input();
+        shell_gfx_refresh_input();
     }
 }

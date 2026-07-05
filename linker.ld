@@ -4,26 +4,39 @@ SECTIONS
 {
     . = 1M;
 
-    .multiboot2 : {
+    kernel_start = .;
+
+    .multiboot2 ALIGN(8) :
+    {
         KEEP(*(.multiboot2))
     }
 
-    .text : {
-        *(.text*)
+    .text ALIGN(4K) :
+    {
+        *(.text)
+        *(.text.*)
     }
 
-    .rodata : {
-        *(.rodata*)
+    .rodata ALIGN(4K) :
+    {
+        *(.rodata)
+        *(.rodata.*)
     }
 
-    .data : {
-        *(.data*)
+    .data ALIGN(4K) :
+    {
+        *(.data)
+        *(.data.*)
     }
 
-    .bss : {
+    .bss ALIGN(4K) :
+    {
         *(COMMON)
-        *(.bss*)
+        *(.bss)
+        *(.bss.*)
     }
+
+    . = ALIGN(4K);
 
     kernel_end = .;
 }

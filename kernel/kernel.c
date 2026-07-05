@@ -5,6 +5,7 @@
 #include "include/idt.h"
 #include "include/pic.h"
 #include "include/keyboard.h"
+#include "include/mouse.h"
 #include "include/shell.h"
 #include "include/kprintf.h"
 #include "include/log.h"
@@ -30,7 +31,9 @@
 #include "include/fileassoc.h"
 #include "include/pmm.h"
 #include "include/paging.h"
+#include "include/gfx.h"
 #include "include/multiboot2.h"
+#include "include/io.h"
 
 
 static uint32_t kernel_boot_magic = 0;
@@ -142,6 +145,30 @@ uint32_t kernel_framebuffer_type(void) {
     return kernel_fb_type;
 }
 
+void kernel_reboot(void) {
+    /*
+     * Hardware reset via PS/2 controller.
+     * Command 0xFE pulses CPU reset line.
+     * In QEMU this returns to BIOS/GRUB, so the boot menu appears again.
+     */
+    __asm__ volatile ("cli");
+
+    for (uint32_t i = 0; i < 100000; i++) {
+        if ((inb(0x64) & 0x02) == 0) {
+            break;
+        }
+    }
+
+    outb(0x64, 0xFE);
+
+    /*
+     * Fallback: if reset command does not fire, halt forever.
+     */
+    while (1) {
+        __asm__ volatile ("hlt");
+    }
+}
+
 void kernel_panic(const char *message) {
     kprintf("\n\n[KERNEL PANIC] %s\nSystem halted.\n", message);
 
@@ -168,6 +195,8 @@ void kernel_init(void) {
         log_info("Framebuffer information not available yet");
     }
 
+    gfx_initialize_from_kernel();
+
     log_info("Initializing GDT...");
     gdt_initialize();
     log_ok("GDT initialized");
@@ -192,9 +221,21 @@ void kernel_init(void) {
     paging_initialize();
     log_ok("Paging structures initialized");
 
-    log_info("Enabling paging...");
-    paging_enable_system();
-    log_ok("Paging enabled");
+    if (kernel_framebuffer_available()) {
+        /*
+         * Framebuffer is a physical address provided by Multiboot2.
+         * Until framebuffer memory is explicitly mapped into page tables,
+         * enabling paging makes gfx_fb unsafe after boot.
+         *
+         * Keep paging disabled in framebuffer UI mode so keyboard-driven
+         * redraws of the AI surface/input bar work reliably.
+         */
+        log_info("Paging skipped for framebuffer UI mode");
+    } else {
+        log_info("Enabling paging...");
+        paging_enable_system();
+        log_ok("Paging enabled");
+    }
 
     log_info("Initializing task subsystem...");
     task_initialize();
@@ -268,6 +309,10 @@ void kernel_init(void) {
     keyboard_initialize();
     log_ok("Keyboard initialized");
 
+    log_info("Initializing mouse...");
+    mouse_initialize();
+    log_ok("Mouse initialized");
+
     log_ok("CPU exceptions registered");
     log_ok("Hardware interrupts enabled");
 
@@ -276,11 +321,29 @@ void kernel_init(void) {
 
     shell_initialize();
 
+    if (gfx_is_ready()) {
+        gfx_draw_ai_surface();
+        shell_set_ui_mode(0);
+    }
+
     __asm__ volatile ("sti");
 }
 
 void kernel_run(void) {
     while (1) {
-        __asm__ volatile ("hlt");
+        keyboard_poll();
+        mouse_poll();
+
+        __asm__ volatile ("pause");
     }
 }
+
+
+
+
+
+
+
+
+
+

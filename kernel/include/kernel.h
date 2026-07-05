@@ -18,5 +18,6 @@ uint32_t kernel_framebuffer_type(void);
 void kernel_init(void);
 void kernel_run(void);
 void kernel_panic(const char *message);
+void kernel_reboot(void);
 
 #endif

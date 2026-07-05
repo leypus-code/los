@@ -12,7 +12,7 @@ mb2_header_start:
     .long MB2_LENGTH
     .long MB2_CHECKSUM
 
-    /* Framebuffer request tag: type=5, size=20, 800x600x32 */
+    /* framebuffer request: 800x600x32 */
     .align 8
     .short 5
     .short 0
@@ -21,7 +21,6 @@ mb2_header_start:
     .long 600
     .long 32
 
-    /* End tag */
     .align 8
     .short 0
     .short 0
@@ -35,12 +34,6 @@ mb2_header_end:
 
 _start:
     mov $stack_top, %esp
-
-    /*
-     * Multiboot2:
-     * eax = magic
-     * ebx = multiboot info address
-     */
     push %ebx
     push %eax
     call kernel_main
@@ -53,7 +46,6 @@ _start:
 
 .section .bss, "aw"
 .align 16
-
 stack_bottom:
     .skip 16384
 stack_top:

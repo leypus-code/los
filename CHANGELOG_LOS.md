@@ -1,5 +1,108 @@
 # LOS Changelog
 
+## LOS v24.2
+- Added first minimal framebuffer workspace surface
+- Added /workspace, /space, and /ws commands
+- Workspace surface is the base for generated widgets, terminal, files, and future AI layouts
+
+## LOS v24.1
+- Added kernel reboot path via PS/2 controller reset command
+- Added reboot/reset/bootmenu shell commands
+- Legacy and Pixel modes can now return to GRUB boot menu by rebooting
+
+## LOS v24.0
+- Added GRUB boot menu with two real buffer systems
+- Added kernel-gfx.elf for framebuffer Pixel AI Surface
+- Added kernel-text.elf for legacy VGA/text shell and Norton stack
+- Removed fake in-kernel boot selector as primary mode switch
+
+## LOS v23.7
+- Simplified framebuffer AI Surface: centered AI ring and chat area only
+- Added graphical shell surface and /shell / /ai mode switching
+- Added initial PS/2 mouse driver on IRQ12
+- Added framebuffer mouse cursor rendering
+
+## LOS v23.5
+- Restored stable VGA text/pixel UI as the default boot surface
+- Disabled framebuffer boot mode as default because PS/2 keyboard input is not reliable there yet
+- Restored interrupt-driven kernel loop for normal keyboard input
+- Simplified QEMU run target back to direct graphical window input
+
+## LOS v23.4
+- Added serial COM1 control plane as reliable primary input path
+- make run now exposes LOS command input through terminal stdio
+- Framebuffer UI remains graphical while host terminal provides keyboard input
+- PS/2 keyboard remains optional fallback instead of blocking progress
+
+## LOS v23.3
+- Added robust PS/2 keyboard controller initialization
+- Explicitly enables first PS/2 port and keyboard scanning
+- Improved keyboard polling by draining multiple scancodes per kernel loop
+- Updated QEMU launch flags to machine pc, VGA std, and en-us keymap
+- This is the production keyboard bring-up path for framebuffer mode
+
+## LOS v23.2g
+- Added direct framebuffer PS/2 polling input path
+- Polling input now bypasses shell dispatch and old modal UI layers
+- Temporarily removed hlt from kernel_run during framebuffer input bring-up
+- This isolates keyboard input from shell/UI routing issues
+
+## LOS v23.2f
+- Fixed framebuffer keyboard polling loop by avoiding hlt in graphics mode
+- Routed framebuffer keyboard input before old modal UI handlers
+- Added polling-side framebuffer key tick for PS/2 input diagnostics
+
+## LOS v23.2e
+- Added PS/2 keyboard polling fallback
+- Keyboard input no longer depends only on IRQ1 delivery
+- Refactored keyboard scancode handling into a shared handler for IRQ and polling paths
+- This is intended to restore visible framebuffer input when keyboard IRQs are not firing
+
+## LOS v23.2d
+- Added direct framebuffer keyboard input path
+- Framebuffer mode now bypasses old modal text UI input handling
+- Added visible key tick debug indicator on graphical surface
+- Enter executes the framebuffer input command and redraws the AI surface
+
+## LOS v23.2c
+- Fixed framebuffer keyboard input being blocked by old modal UI mode
+- Graphical AI Surface now keeps shell input active
+- shell_putchar now accepts input when framebuffer graphics is active
+- Enter now clears and redraws the graphical input bar in framebuffer mode
+
+## LOS v23.2a
+- Fixed graphical input bar text overlap
+- Added forced framebuffer input redraw after keyboard handling
+- Added visible placeholder when input is empty
+- Improved usability of graphical AI Surface input area
+
+## LOS v23.2
+- Added framebuffer pixel text renderer with 5x7 block font
+- Added visible labels to graphical AI Surface
+- Added visible framebuffer shell input bar
+- shell input is now redrawn into the graphical framebuffer when graphics mode is active
+- This makes the graphical surface usable as the primary visible UI direction
+
+## LOS v23.1a
+- Boot now opens the graphical AI Surface when framebuffer is available
+- Text Pixel Boot Screen remains as fallback for non-framebuffer mode
+- Fixes the issue where LOS stayed visually stuck on the framebuffer boot splash
+
+## LOS v23.1
+- Added first graphical AI chat surface in framebuffer mode
+- Added visual AI ring/core, chat transcript panel, operations panel, and input bar
+- Added gfxchat command
+- screen1 now opens graphical AI surface when framebuffer is available
+- This moves LOS UI direction from text workspaces toward real pixel-rendered AI surfaces
+
+## LOS v23.0c
+- Requested 800x600x32 framebuffer through Multiboot2 header
+- Added kernel framebuffer graphics module
+- Added primitive pixel operations: clear, put pixel, fill rect, loading bars
+- Added first real graphical LOS boot splash
+- Added gfxboot command for manually redrawing graphical boot screen
+- This is the first real pixel-rendered LOS screen
+
 ## LOS v23.0b
 - Added Multiboot2 tag parser
 - Kernel now scans bootloader tags for framebuffer information
