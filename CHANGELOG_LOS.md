@@ -1,5 +1,11 @@
 # LOS Changelog
 
+## LOS v25.0
+- Added static framebuffer backbuffer
+- Added begin/present/end frame rendering path
+- AI surface and workspace surface now render complete frames before presenting
+- First step toward retained compositor and stable generated UI rendering
+
 ## LOS v24.9
 - Added generated workspace widget state
 - Added LOS_UI layout and widget commands

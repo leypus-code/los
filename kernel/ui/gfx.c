@@ -7,6 +7,17 @@ static uint32_t gfx_width = 0;
 static uint32_t gfx_height = 0;
 static uint32_t gfx_pitch = 0;
 static uint32_t gfx_bpp = 0;
+
+/*
+ * v25 framebuffer backbuffer.
+ * Draw complete surfaces into RAM first, then present to real framebuffer.
+ */
+#define GFX_BACKBUFFER_MAX_WIDTH  1024
+#define GFX_BACKBUFFER_MAX_HEIGHT 768
+
+static uint32_t gfx_backbuffer[GFX_BACKBUFFER_MAX_WIDTH * GFX_BACKBUFFER_MAX_HEIGHT];
+static int gfx_frame_active = 0;
+
 static uint32_t gfx_anim_tick = 0;
 static int gfx_model_state = 0; /* 0 idle, 1 loading, 2 ready, 3 thinking, 4 drawing */
 static int gfx_ring_anchor = 0; /* 0 center, 1 workspace top-right */
@@ -138,8 +149,8 @@ int gfx_is_ready(void) {
 }
 
 void gfx_put_pixel(uint32_t x, uint32_t y, uint32_t color) {
-    uint32_t *pixel = 0;
-    uint32_t offset = 0;
+    uint32_t offset;
+    uint32_t *pixel;
 
     if (!gfx_ready) {
         return;
@@ -149,10 +160,24 @@ void gfx_put_pixel(uint32_t x, uint32_t y, uint32_t color) {
         return;
     }
 
+    /*
+     * If a frame is active, draw into backbuffer instead of touching screen.
+     */
+    if (gfx_frame_active) {
+        if (x < GFX_BACKBUFFER_MAX_WIDTH && y < GFX_BACKBUFFER_MAX_HEIGHT) {
+            gfx_backbuffer[y * GFX_BACKBUFFER_MAX_WIDTH + x] = color;
+        }
+        return;
+    }
+
+    /*
+     * Direct framebuffer write.
+     */
     offset = y * gfx_pitch + x * 4;
     pixel = (uint32_t *)(gfx_addr + offset);
     *pixel = color;
 }
+
 
 void gfx_clear(uint32_t color) {
     if (!gfx_ready) {
@@ -485,9 +510,12 @@ void gfx_draw_ai_surface(void) {
 
     gfx_set_ring_anchor(0);
 
+    gfx_begin_frame();
+
     gfx_clear(bg);
     gfx_draw_model_ring();
     gfx_draw_shell_input("");
+    gfx_end_frame();
 }
 
 
@@ -961,6 +989,8 @@ void gfx_draw_workspace_surface(void) {
 
     gfx_set_ring_anchor(1);
 
+    gfx_begin_frame();
+
     gfx_clear(bg);
 
     /*
@@ -1048,6 +1078,7 @@ void gfx_draw_workspace_surface(void) {
     }
 
     gfx_draw_shell_input("");
+    gfx_end_frame();
 }
 
 
@@ -1109,4 +1140,60 @@ void gfx_draw_host_note(const char *text) {
     gfx_draw_hline(x, y - 12, w, dim);
 
     gfx_draw_text(x, y, text, fg, 1);
+}
+
+void gfx_begin_frame(void) {
+    if (!gfx_ready) {
+        return;
+    }
+
+    if (gfx_width > GFX_BACKBUFFER_MAX_WIDTH || gfx_height > GFX_BACKBUFFER_MAX_HEIGHT) {
+        /*
+         * Resolution too large for static v25 backbuffer.
+         * Fall back to direct rendering.
+         */
+        gfx_frame_active = 0;
+        return;
+    }
+
+    gfx_frame_active = 1;
+}
+
+void gfx_present(void) {
+    uint32_t x;
+    uint32_t y;
+    uint32_t offset;
+    uint32_t *pixel;
+
+    if (!gfx_ready) {
+        return;
+    }
+
+    if (gfx_width > GFX_BACKBUFFER_MAX_WIDTH || gfx_height > GFX_BACKBUFFER_MAX_HEIGHT) {
+        return;
+    }
+
+    /*
+     * Copy complete backbuffer to framebuffer.
+     */
+    for (y = 0; y < gfx_height; y++) {
+        for (x = 0; x < gfx_width; x++) {
+            offset = y * gfx_pitch + x * 4;
+            pixel = (uint32_t *)(gfx_addr + offset);
+            *pixel = gfx_backbuffer[y * GFX_BACKBUFFER_MAX_WIDTH + x];
+        }
+    }
+}
+
+void gfx_end_frame(void) {
+    if (!gfx_ready) {
+        return;
+    }
+
+    if (!gfx_frame_active) {
+        return;
+    }
+
+    gfx_frame_active = 0;
+    gfx_present();
 }

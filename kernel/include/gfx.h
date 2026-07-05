@@ -36,4 +36,7 @@ void gfx_workspace_set_layout(const char *layout);
 void gfx_workspace_add_widget(const char *widget);
 void gfx_set_ring_anchor(int anchor);
 
+void gfx_begin_frame(void);
+void gfx_present(void);
+void gfx_end_frame(void);
 #endif
