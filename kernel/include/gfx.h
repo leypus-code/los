@@ -34,4 +34,6 @@ void gfx_draw_host_note(const char *text);
 void gfx_workspace_reset(void);
 void gfx_workspace_set_layout(const char *layout);
 void gfx_workspace_add_widget(const char *widget);
+void gfx_set_ring_anchor(int anchor);
+
 #endif

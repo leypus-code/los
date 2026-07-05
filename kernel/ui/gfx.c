@@ -9,6 +9,7 @@ static uint32_t gfx_pitch = 0;
 static uint32_t gfx_bpp = 0;
 static uint32_t gfx_anim_tick = 0;
 static int gfx_model_state = 0; /* 0 idle, 1 loading, 2 ready, 3 thinking, 4 drawing */
+static int gfx_ring_anchor = 0; /* 0 center, 1 workspace top-right */
 
 #define MODEL_RING_BOX 320
 static uint32_t gfx_model_ring_buffer[MODEL_RING_BOX * MODEL_RING_BOX];
@@ -68,11 +69,16 @@ static void gfx_blit_model_ring_buffer(int screen_cx, int screen_cy) {
             int py = start_y + y;
 
             if (px >= 0 && py >= 0 && px < (int)gfx_width && py < (int)gfx_height) {
-                gfx_put_pixel((uint32_t)px, (uint32_t)py, gfx_model_ring_buffer[y * MODEL_RING_BOX + x]);
+                gfx_put_pixel(
+                    (uint32_t)px,
+                    (uint32_t)py,
+                    gfx_model_ring_buffer[(uint32_t)y * MODEL_RING_BOX + (uint32_t)x]
+                );
             }
         }
     }
 }
+
 
 static uint32_t gfx_cursor_tick = 0;
 static int gfx_cursor_visible = 1;
@@ -361,6 +367,18 @@ static void gfx_draw_ring_circle(int cx, int cy, int r_outer, int thickness, uin
 
 
 
+void gfx_set_ring_anchor(int anchor) {
+    if (anchor < 0) {
+        anchor = 0;
+    }
+
+    if (anchor > 1) {
+        anchor = 1;
+    }
+
+    gfx_ring_anchor = anchor;
+}
+
 void gfx_set_model_state(int state) {
     if (state < 0) state = 0;
     if (state > 4) state = 4;
@@ -386,21 +404,23 @@ static void gfx_draw_model_ring(void) {
     int cx = MODEL_RING_BOX / 2;
     int cy = MODEL_RING_BOX / 2;
 
-    int radius = 92;
-    int thickness = 8;
+    int radius;
+    int thickness;
     int pulse = 0;
 
     if (!gfx_ready) {
         return;
     }
 
+    /*
+     * This animated renderer is now used only for the main AI surface.
+     * Workspace has its own direct small ring renderer.
+     */
     screen_cx = (int)(gfx_width / 2);
     screen_cy = (int)(gfx_height / 2) - 30;
+    radius = 92;
+    thickness = 8;
 
-    /*
-     * Draw whole ring frame offscreen first,
-     * then copy complete frame to framebuffer.
-     */
     gfx_buf_clear(bg);
 
     if (gfx_model_state == 0) {
@@ -410,9 +430,10 @@ static void gfx_draw_model_ring(void) {
     }
 
     if (gfx_model_state == 1) {
-        /* loading: breathing */
         pulse = (int)((gfx_anim_tick / 18000) % 18);
-        if (pulse > 9) pulse = 18 - pulse;
+        if (pulse > 9) {
+            pulse = 18 - pulse;
+        }
 
         gfx_buf_draw_ring_circle(cx, cy, radius + pulse, thickness, blue);
         gfx_buf_draw_ring_circle(cx, cy, radius - 22, 4, dim);
@@ -421,7 +442,6 @@ static void gfx_draw_model_ring(void) {
     }
 
     if (gfx_model_state == 2) {
-        /* ready */
         gfx_buf_draw_ring_circle(cx, cy, radius, thickness, blue);
         gfx_buf_fill_circle(cx, cy, 8, blue);
         gfx_blit_model_ring_buffer(screen_cx, screen_cy);
@@ -429,9 +449,10 @@ static void gfx_draw_model_ring(void) {
     }
 
     if (gfx_model_state == 3) {
-        /* thinking */
         pulse = (int)((gfx_anim_tick / 14000) % 24);
-        if (pulse > 12) pulse = 24 - pulse;
+        if (pulse > 12) {
+            pulse = 24 - pulse;
+        }
 
         gfx_buf_draw_ring_circle(cx, cy, radius + pulse, 6, blue);
         gfx_buf_draw_ring_circle(cx, cy, radius - 24 - pulse / 2, 5, pale);
@@ -441,9 +462,10 @@ static void gfx_draw_model_ring(void) {
     }
 
     if (gfx_model_state == 4) {
-        /* drawing UI */
         pulse = (int)((gfx_anim_tick / 10000) % 30);
-        if (pulse > 15) pulse = 30 - pulse;
+        if (pulse > 15) {
+            pulse = 30 - pulse;
+        }
 
         gfx_buf_draw_ring_circle(cx, cy, radius + pulse, 5, pale);
         gfx_buf_draw_ring_circle(cx, cy, radius - 20, 5, blue);
@@ -454,8 +476,6 @@ static void gfx_draw_model_ring(void) {
     }
 }
 
-
-
 void gfx_draw_ai_surface(void) {
     uint32_t bg = rgb(1, 4, 13);
 
@@ -463,10 +483,13 @@ void gfx_draw_ai_surface(void) {
         return;
     }
 
+    gfx_set_ring_anchor(0);
+
     gfx_clear(bg);
     gfx_draw_model_ring();
     gfx_draw_shell_input("");
 }
+
 
 
 
@@ -829,7 +852,7 @@ void gfx_workspace_set_layout(const char *layout) {
         return;
     }
 
-    if (gfx_streq(layout, "debug")) {
+    if (gfx_streq(layout, "debug") || gfx_streq(layout, "debugging")) {
         gfx_workspace_layout = 2;
         return;
     }
@@ -898,50 +921,73 @@ static void gfx_draw_widget_panel(uint32_t x, uint32_t y, uint32_t w, uint32_t h
 }
 
 
-void gfx_draw_workspace_surface(void) {
-    uint32_t bg = rgb(1, 4, 13);
-    uint32_t ring = rgb(90, 170, 255);
-    uint32_t dim = rgb(35, 55, 95);
-    uint32_t fg = rgb(90, 170, 255);
 
-    uint32_t margin = 48;
-    uint32_t top = 54;
-    uint32_t bottom_reserved = 92;
-    uint32_t area_x = margin;
-    uint32_t area_y = 150;
-    uint32_t area_w = gfx_width - margin * 2;
-    uint32_t area_h = gfx_height - area_y - bottom_reserved;
+static void gfx_draw_workspace_status_ring(void) {
+    uint32_t ring = rgb(90, 170, 255);
+
+    uint32_t cx;
+    uint32_t cy;
 
     if (!gfx_ready) {
         return;
     }
 
+    /*
+     * Workspace ring:
+     * direct draw, no offscreen background, no center dot.
+     */
+    cx = gfx_width - 112;
+    cy = 74;
+
+    gfx_draw_ring_circle((int)cx, (int)cy, 34, 4, ring);
+}
+
+
+void gfx_draw_workspace_surface(void) {
+    uint32_t bg = rgb(1, 4, 13);
+    uint32_t dim = rgb(35, 55, 95);
+    uint32_t fg = rgb(90, 170, 255);
+
+    uint32_t margin = 48;
+    uint32_t header_y = 48;
+    uint32_t area_x = margin;
+    uint32_t area_y = 118;
+    uint32_t area_w = gfx_width - margin * 2;
+    uint32_t area_h = gfx_height - area_y - 118;
+
+    if (!gfx_ready) {
+        return;
+    }
+
+    gfx_set_ring_anchor(1);
+
     gfx_clear(bg);
 
     /*
-     * Small AI ring as workspace header.
+     * Workspace header.
+     * AI ring is now a small status element in the top-right corner.
      */
-    gfx_draw_ring_circle((int)(gfx_width / 2), 74, 36, 4, ring);
-
-    gfx_draw_hline(margin, 122, gfx_width - margin * 2, dim);
-
     if (gfx_workspace_layout == 1) {
-        gfx_draw_text(margin, top, "WORKSPACE / CODING", fg, 1);
+        gfx_draw_text(margin, header_y, "WORKSPACE / CODING", fg, 1);
     } else if (gfx_workspace_layout == 2) {
-        gfx_draw_text(margin, top, "WORKSPACE / DEBUG", fg, 1);
+        gfx_draw_text(margin, header_y, "WORKSPACE / DEBUG", fg, 1);
     } else {
-        gfx_draw_text(margin, top, "WORKSPACE", fg, 1);
+        gfx_draw_text(margin, header_y, "WORKSPACE", fg, 1);
     }
 
+    gfx_draw_hline(margin, 86, area_w, dim);
+
     /*
-     * Default coding layout:
-     * editor large left/top, terminal bottom, files/logs side panels.
+     * Draw the small status ring after clearing the screen.
      */
+    gfx_draw_workspace_status_ring();
+
     if (gfx_workspace_layout == 1) {
         uint32_t left_w = (area_w * 62) / 100;
         uint32_t right_w = area_w - left_w - 16;
         uint32_t top_h = (area_h * 62) / 100;
         uint32_t bottom_h = area_h - top_h - 16;
+        uint32_t right_x = area_x + left_w + 16;
 
         if (gfx_workspace_widgets & GFX_WIDGET_EDITOR) {
             gfx_draw_widget_panel(area_x, area_y, left_w, top_h, "EDITOR", "generated code surface");
@@ -952,48 +998,53 @@ void gfx_draw_workspace_surface(void) {
         }
 
         if (gfx_workspace_widgets & GFX_WIDGET_FILES) {
-            gfx_draw_widget_panel(area_x + left_w + 16, area_y, right_w, (area_h - 16) / 2, "FILES", "project tree");
+            gfx_draw_widget_panel(right_x, area_y, right_w, (area_h - 16) / 2, "FILES", "project tree");
         }
 
         if (gfx_workspace_widgets & GFX_WIDGET_LOGS) {
-            gfx_draw_widget_panel(area_x + left_w + 16, area_y + ((area_h - 16) / 2) + 16, right_w, (area_h - 16) / 2, "LOGS", "runtime messages");
+            gfx_draw_widget_panel(right_x, area_y + ((area_h - 16) / 2) + 16, right_w, (area_h - 16) / 2, "LOGS", "runtime messages");
         }
 
-        if ((gfx_workspace_widgets & GFX_WIDGET_FILES) == 0 &&
-            (gfx_workspace_widgets & GFX_WIDGET_LOGS) == 0 &&
-            (gfx_workspace_widgets & GFX_WIDGET_DOCKER) == 0 &&
-            (gfx_workspace_widgets & GFX_WIDGET_SSH) == 0) {
-            gfx_draw_widget_panel(area_x + left_w + 16, area_y, right_w, area_h, "AI CONTEXT", "next generated widgets");
+        if (gfx_workspace_widgets & GFX_WIDGET_DOCKER) {
+            gfx_draw_widget_panel(right_x, area_y, right_w, (area_h - 16) / 2, "DOCKER", "containers / services");
+        }
+
+        if (gfx_workspace_widgets & GFX_WIDGET_SSH) {
+            gfx_draw_widget_panel(right_x, area_y + ((area_h - 16) / 2) + 16, right_w, (area_h - 16) / 2, "SSH", "remote sessions");
+        }
+
+        if ((gfx_workspace_widgets & (GFX_WIDGET_FILES | GFX_WIDGET_LOGS | GFX_WIDGET_DOCKER | GFX_WIDGET_SSH | GFX_WIDGET_BROWSER)) == 0) {
+            gfx_draw_widget_panel(right_x, area_y, right_w, area_h, "AI CONTEXT", "next generated widgets");
+        }
+
+        if (gfx_workspace_widgets & GFX_WIDGET_BROWSER) {
+            gfx_draw_widget_panel(right_x, area_y, right_w, area_h, "BROWSER", "web / docs / preview");
         }
     } else if (gfx_workspace_layout == 2) {
         uint32_t col_w = (area_w - 32) / 3;
 
-        gfx_draw_widget_panel(area_x, area_y, col_w, area_h, "LOGS", "debug stream");
-        gfx_draw_widget_panel(area_x + col_w + 16, area_y, col_w, area_h, "TERMINAL", "diagnostics");
-        gfx_draw_widget_panel(area_x + (col_w + 16) * 2, area_y, col_w, area_h, "STATE", "runtime inspection");
+        if (gfx_workspace_widgets & GFX_WIDGET_LOGS) {
+            gfx_draw_widget_panel(area_x, area_y, col_w, area_h, "LOGS", "debug stream");
+        } else {
+            gfx_draw_widget_panel(area_x, area_y, col_w, area_h, "STATE", "runtime inspection");
+        }
+
+        if (gfx_workspace_widgets & GFX_WIDGET_TERMINAL) {
+            gfx_draw_widget_panel(area_x + col_w + 16, area_y, col_w, area_h, "TERMINAL", "diagnostics");
+        }
+
+        if (gfx_workspace_widgets & GFX_WIDGET_DOCKER) {
+            gfx_draw_widget_panel(area_x + (col_w + 16) * 2, area_y, col_w, area_h, "DOCKER", "containers");
+        } else if (gfx_workspace_widgets & GFX_WIDGET_SSH) {
+            gfx_draw_widget_panel(area_x + (col_w + 16) * 2, area_y, col_w, area_h, "SSH", "remote debug");
+        } else {
+            gfx_draw_widget_panel(area_x + (col_w + 16) * 2, area_y, col_w, area_h, "WATCH", "signals / events");
+        }
     } else {
-        /*
-         * Empty/generated fallback.
-         */
         gfx_draw_hline(area_x, area_y, area_w, dim);
         gfx_draw_hline(area_x, area_y + area_h, area_w, dim);
         gfx_draw_text(area_x + 12, area_y + 24, "READY", dim, 1);
         gfx_draw_text(area_x + 12, area_y + 46, "ASK MODEL TO GENERATE WIDGETS", dim, 1);
-    }
-
-    /*
-     * Additional widgets not covered by main coding layout.
-     */
-    if (gfx_workspace_widgets & GFX_WIDGET_BROWSER) {
-        gfx_draw_text(margin, gfx_height - 126, "BROWSER WIDGET REQUESTED", dim, 1);
-    }
-
-    if (gfx_workspace_widgets & GFX_WIDGET_DOCKER) {
-        gfx_draw_text(margin + 180, gfx_height - 126, "DOCKER WIDGET REQUESTED", dim, 1);
-    }
-
-    if (gfx_workspace_widgets & GFX_WIDGET_SSH) {
-        gfx_draw_text(margin + 360, gfx_height - 126, "SSH WIDGET REQUESTED", dim, 1);
     }
 
     gfx_draw_shell_input("");
@@ -1001,8 +1052,18 @@ void gfx_draw_workspace_surface(void) {
 
 
 
+
 void gfx_tick(void) {
     if (!gfx_ready) {
+        return;
+    }
+
+    /*
+     * Workspace has its own clean static ring.
+     * Do not redraw animated ring buffer over workspace,
+     * otherwise it can overwrite panels with a black square.
+     */
+    if (gfx_ring_anchor == 1) {
         return;
     }
 
@@ -1016,13 +1077,13 @@ void gfx_tick(void) {
     gfx_anim_tick++;
 
     /*
-     * Frequent redraw of only the ring buffer.
-     * No full screen clear, no text redraw, no frame flicker.
+     * AI surface animation only.
      */
     if ((gfx_anim_tick % 9000) == 0) {
         gfx_draw_model_ring();
     }
 }
+
 
 
 

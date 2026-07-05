@@ -118,17 +118,77 @@ static void mouse_callback(struct registers *regs) {
 
 void mouse_poll(void) {
     /*
-     * Temporarily disabled in framebuffer AI mode.
+     * Pure AUX polling fallback.
      */
-    return;
-}
+    for (int i = 0; i < 16; i++) {
+        uint8_t status = inb(0x64);
 
+        if (!(status & 0x01)) {
+            return;
+        }
+
+        /*
+         * If output is not AUX/mouse data, do not consume it.
+         */
+        if (!(status & 0x20)) {
+            return;
+        }
+
+        mouse_process_byte(inb(0x60));
+    }
+}
 
 void mouse_initialize(void) {
-    /*
-     * Temporarily disabled in framebuffer AI mode.
-     * Mouse will return later through the LOS event/compositor layer.
-     */
-    return;
-}
+    uint8_t config;
 
+    mouse_cycle = 0;
+    ps2_flush();
+
+    /*
+     * Enable AUX mouse port.
+     */
+    ps2_cmd(0xA8);
+    ps2_flush();
+
+    /*
+     * Read controller config byte.
+     */
+    ps2_cmd(0x20);
+    config = ps2_read();
+
+    /*
+     * Enable IRQ12, enable AUX clock, keep translation state untouched.
+     */
+    config |= 0x02;
+    config &= (uint8_t)~0x20;
+
+    /*
+     * Write controller config byte.
+     */
+    ps2_cmd(0x60);
+    ps2_data(config);
+
+    ps2_flush();
+
+    /*
+     * Reset defaults.
+     */
+    mouse_write(0xF6);
+    (void)ps2_read();
+
+    /*
+     * Set sample rate 100.
+     */
+    mouse_write(0xF3);
+    (void)ps2_read();
+    mouse_write(100);
+    (void)ps2_read();
+
+    /*
+     * Enable streaming.
+     */
+    mouse_write(0xF4);
+    (void)ps2_read();
+
+    irq_install_handler(12, mouse_callback);
+}

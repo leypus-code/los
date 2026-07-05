@@ -67,6 +67,8 @@ def apply_model_plan(sock, prompt, answer):
 
         if upper.startswith("LAYOUT "):
             value = line[7:].strip().lower()
+            if value == "debugging":
+                value = "debug"
             layout_values.append(value)
             if value in ("coding", "debug"):
                 workspace_needed = True

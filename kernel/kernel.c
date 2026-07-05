@@ -335,7 +335,9 @@ void kernel_init(void) {
 void kernel_run(void) {
     while (1) {
         keyboard_poll();
-        mouse_poll();
+        if (!gfx_is_ready()) {
+            mouse_poll();
+        }
         host_bridge_poll();
 
         if (gfx_is_ready()) {
