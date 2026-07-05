@@ -1,5 +1,17 @@
 # LOS Changelog
 
+## LOS v24.8
+- Added Python AI provider abstraction layer
+- Added fake and Ollama providers
+- Added LOS_AI_PROVIDER and LOS_AI_MODEL environment selection
+- Added bridge-fake and bridge-ollama helper targets
+
+## LOS v24.7
+- Added LOS_UI note command for model responses
+- Added minimal framebuffer response renderer
+- Updated Python AI bridge to call Ollama when available
+- Added fallback AI response mode when Ollama is unavailable
+
 ## LOS v24.6
 - Added host-to-LOS serial UI command channel
 - Added LOS_UI state and surface command parser

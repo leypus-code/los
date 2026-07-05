@@ -849,3 +849,26 @@ void gfx_tick(void) {
 
 
 
+
+void gfx_draw_host_note(const char *text) {
+    uint32_t bg = rgb(1, 4, 13);
+    uint32_t fg = rgb(90, 170, 255);
+    uint32_t dim = rgb(35, 55, 95);
+
+    uint32_t x = 64;
+    uint32_t y = gfx_height - 150;
+    uint32_t w = gfx_width - 128;
+
+    if (!gfx_ready || !text) {
+        return;
+    }
+
+    /*
+     * Minimal model response area.
+     * It appears only after host/model sends a note.
+     */
+    gfx_fill_rect(0, y - 20, gfx_width, 70, bg);
+    gfx_draw_hline(x, y - 12, w, dim);
+
+    gfx_draw_text(x, y, text, fg, 1);
+}

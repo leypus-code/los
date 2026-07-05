@@ -102,6 +102,13 @@ static void host_bridge_handle_line(const char *line) {
         host_bridge_apply_surface(payload);
         return;
     }
+
+    if (strncmp(line, "LOS_UI|note|", 12) == 0) {
+        payload = line + 12;
+        gfx_draw_host_note(payload);
+        return;
+    }
+
 }
 
 void host_bridge_poll(void) {

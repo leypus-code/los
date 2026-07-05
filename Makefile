@@ -254,3 +254,13 @@ clean:
 run-ai-bridge: $(ISO)
 	rm -f /tmp/los-ai.sock
 	qemu-system-i386 -machine pc -vga std -cdrom $(ISO) -serial unix:/tmp/los-ai.sock,server=on,wait=off -no-shutdown
+
+run-ai-bridge-fake: $(ISO)
+	rm -f /tmp/los-ai.sock
+	qemu-system-i386 -machine pc -vga std -cdrom $(ISO) -serial unix:/tmp/los-ai.sock,server=on,wait=off -no-shutdown
+
+bridge-fake:
+	LOS_AI_PROVIDER=fake LOS_AI_MODEL=fake python3 tools/ai_bridge.py
+
+bridge-ollama:
+	LOS_AI_PROVIDER=ollama LOS_AI_MODEL=qwen2.5:0.5b python3 tools/ai_bridge.py

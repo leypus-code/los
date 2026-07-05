@@ -29,4 +29,6 @@ void gfx_tick(void);
 
 void gfx_set_model_state(int state);
 int gfx_get_model_state(void);
+void gfx_draw_host_note(const char *text);
+
 #endif
